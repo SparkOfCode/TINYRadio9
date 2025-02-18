@@ -237,7 +237,8 @@ void gotSettings(AsyncWebServerRequest *request) {
 
   int params = request->params();
   for (int i = 0; i < params; i++) {
-    AsyncWebParameter* p = request->getParam(i);
+    // SparkOfCode: added "const" to avoid invalid conversion error
+    const AsyncWebParameter* p = request->getParam(i);
     if(p->name() == "Settings") {
       saveSettings(p->value());
     }

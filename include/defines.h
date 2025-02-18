@@ -13,7 +13,9 @@
 #ifndef defines_h
 #define defines_h
 
-#if !( ESP8266 || ESP32)
+// SparkOfCode: #if directive replaced due to error with current ESP IDF, first line returned true for some reason.
+//#if !( ESP8266 || ESP32)
+#if !( defined(ESP8266) || defined(ESP32) )
   #error This code is intended to run only on the ESP8266/ESP32 boards ! Please check your Tools->Board setting.
 #endif
 

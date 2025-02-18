@@ -712,7 +712,9 @@ class ESPAsync_WiFiManager_Lite
 
       if (iHostname[0] == 0)
       {
-        String _hostname = "ESP_" + String(ESP_getChipId(), HEX);
+// SparkOfCode: ChipID() does not work anymore, reason unknown; replaced by fixed value
+//        String _hostname = "ESP_" + String(ESP_getChipId(), HEX);
+        String _hostname = "ESP32S3";
         _hostname.toUpperCase();
 
         getRFC952_hostname(_hostname.c_str());
@@ -3044,7 +3046,9 @@ class ESPAsync_WiFiManager_Lite
 
       if ( (portal_ssid == "") || portal_pass == "" )
       {
-        String chipID = String(ESP_getChipId(), HEX);
+// SparkOfCode: ChipID() does not work anymore, reason unknown; replaced by fixed value
+//        String chipID = String(ESP_getChipId(), HEX);
+        String chipID = "ESP32S3";
         chipID.toUpperCase();
 
         portal_ssid = "ESP_" + chipID;
