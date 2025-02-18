@@ -21,6 +21,7 @@ You will need one 2-pin JST-connector (1.25mm) for the speaker, another one to e
 ## Configuration
 The default configuration works with the minimal hardware: just the board and a speaker.
 I will add information about stereo and external volume control or station selector later.
+- Connect external speaker to the corresponding connector
 - Connect pin 6 of the debug connector to GND - on the debug connector, these are pins 6 and 7. **Make sure not to brick the wrong side of the connector, this may destroy your board!!** Pins 6 and 7 are the two pins directly above the reset button:
 ![Debug Port](images/DebugPort.jpg)
 - Press reset to enable flash mode
