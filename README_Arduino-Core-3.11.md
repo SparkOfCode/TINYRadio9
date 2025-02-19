@@ -10,8 +10,8 @@ File platformio:
 	https://github.com/schreibfaul1/ESP32-audioI2S.git
 
 **Result**: error: 'm_i2s_chan_cfg' was not declared in this scope (and many more similar errors)  
-**Reason**: m_i2s_chan_cfg and other variables are not included anymore in current versions of ESP-IDF  
-**Solution**: change 2
+**Reason**: m_i2s_chan_cfg and other parameters are not included anymore in current versions of ESP-IDF  
+**Solution**: Change 2
 
 ### Change 2: Switch to current ESP-IDF / Arduino platform
 
@@ -26,7 +26,7 @@ platform = espressif32
 ### Change 3: Correct expression for error condition
 
 File /include/defines.h:  
-/* SparkOfCode: Line 16 replaced due to error with current ESP IDF, first line returns true for some reason.  
+// SparkOfCode: Line 16 replaced due to error with current ESP IDF, first line returns true for some reason.  
 //#if !( ESP8266 || ESP32)  
 #if !( defined(ESP8266) || defined(ESP32) )  
 
