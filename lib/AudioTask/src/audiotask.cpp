@@ -7,9 +7,13 @@
 #include "audiotask.h"
 
 /* I2S Pins */
-#define WT_I2S_BCK 36
+/*#define WT_I2S_BCK 36
 #define WT_I2S_WS  35
-#define WT_I2S_DATA 37
+#define WT_I2S_DATA 37*/
+
+#define WT_I2S_BCK 13 //white
+#define WT_I2S_WS  11 //blue
+#define WT_I2S_DATA 12 //green
 
 #define I2S_COMM_FMT        0   
 #define AUDIOTASK_CORE      1                               // 0 or 1
