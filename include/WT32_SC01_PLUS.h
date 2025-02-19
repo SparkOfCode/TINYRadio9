@@ -62,11 +62,11 @@ USB Mode: "Hardware CDC and JTAG"
     #define TFT_VER_RES 320
 #endif
 
-
+// SparkOfCode: commented out because I2S pins are defined in lib/AudioTask/src/audiotask.cpp
 /* I2S Pins */
-#define WT_I2S_BCK 36
+/*#define WT_I2S_BCK 36
 #define WT_I2S_WS  35
-#define WT_I2S_DATA 37
+#define WT_I2S_DATA 37 */
 
 /* I2S Pins for external DAC (e.g. UDA1344) */
 /*#define WT_I2S_BCK 13 //white

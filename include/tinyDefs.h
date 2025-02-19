@@ -24,6 +24,9 @@
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR TUNING
 //#define USE_ENCODER_TUNE 
 
+//SparkOfCode
+//Uncomment next line if you want to use an external DAC module (e.g. UDA1344, allows stereo)
+#define USE_EXTERNAL_DAC
 
 //ENCODER PINS
 #ifdef USE_ENCODER_VOLUME
