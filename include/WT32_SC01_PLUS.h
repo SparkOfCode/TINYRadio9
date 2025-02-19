@@ -64,14 +64,14 @@ USB Mode: "Hardware CDC and JTAG"
 
 
 /* I2S Pins */
-/*#define WT_I2S_BCK 36
+#define WT_I2S_BCK 36
 #define WT_I2S_WS  35
-#define WT_I2S_DATA 37*/
+#define WT_I2S_DATA 37
 
-/* I2S Pins extern (UDA1344) */
-#define WT_I2S_BCK 13 //white
+/* I2S Pins for external DAC (e.g. UDA1344) */
+/*#define WT_I2S_BCK 13 //white
 #define WT_I2S_WS  11 //blue
-#define WT_I2S_DATA 12 //green
+#define WT_I2S_DATA 12 //green*/
 
 #ifdef WT_USE_SDCARD
   /* SD-Card Pins */
