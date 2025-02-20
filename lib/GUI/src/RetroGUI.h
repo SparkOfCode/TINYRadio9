@@ -269,12 +269,14 @@ class RetroGUI: public GuiClass {
             
             if(_nextVolumePosition < 0 ) {_nextVolumePosition = pw2 ;}
 
-            #ifdef USE_ENCODER_VOLUME
+            //SparkOfCode // added USE_POT_VOLUME
+            //#ifdef USE_ENCODER_VOLUME
+            #if (defined(USE_ENCODER_VOLUME) || defined(USE_POT_VOLUME))
                 //SET IT DIRECT (W/O ANIMATION)
                 lv_obj_set_x(volume_indicator,_nextVolumePosition);
             #else
                 //ANIMATION
-                float _pixel_time =   INDICATOR_MOVE_TIME / TFT_HOR_RES ; // PIXEL / mSec
+                float _pixel_time =   INDICATOR_MOVE_TIME / TFT_HOR_RES; // PIXEL / mSec
                 uint32_t _move_distance = abs ((int32_t) (_lastVolumePosition - _nextVolumePosition) );
                 uint32_t _move_time =  _pixel_time * _move_distance; //_pixel_time * distance
                 lv_anim_t a;

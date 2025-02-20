@@ -28,6 +28,10 @@
 //Uncomment next line if you want to use an external DAC module (e.g. UDA1344, allows stereo)
 #define USE_EXTERNAL_DAC
 
+//SparkOfCode
+//Uncomment next line if you want to use a potentiometer on ADC for volume control
+#define USE_POT_VOLUME
+
 //ENCODER PINS
 #ifdef USE_ENCODER_VOLUME
 //PINS
@@ -43,6 +47,10 @@
   #define ENC_TUNE_B_PIN          21
 #endif
 
+#ifdef USE_POT_VOLUME
+  #define POT_VOL_PIN     10 // GPIO10 is ADC1_CH9 (pin 3 of Extended IO Interface)
+#endif
+
 #define HOST_NAME   "TinyRadio" //FOR CONNECT VIA BROWSER -> use TinyRadio.local !
 
 //********************************************************************************
@@ -54,7 +62,7 @@
 //NO ENCODER
 #if !defined(USE_ENCODER_VOLUME) && !defined(USE_ENCODER_TUNE)
   static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
-  #define VOLUME_STEPS 21
+  #define VOLUME_STEPS 119
   #define TUNE_STEPS    4
 #endif
 
