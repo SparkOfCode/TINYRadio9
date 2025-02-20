@@ -62,7 +62,7 @@
 //NO ENCODER
 #if !defined(USE_ENCODER_VOLUME) && !defined(USE_ENCODER_TUNE)
   static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
-  #define VOLUME_STEPS 119
+  #define VOLUME_STEPS 20
   #define TUNE_STEPS    4
 #endif
 
@@ -86,9 +86,12 @@
   #define TUNE_STEPS    4
 #endif
 
+// SparkOfCode: Volume Potentiometer
+#ifdef USE_POT_VOLUME
+  #define VOLUME_STEPS 119 // 100 or 120 does not use the full display width - bug in RetroGUI?
+#endif
 
   #define INDICATOR_MOVE_TIME 2000 // 2 sec. (2000 mS) from left to right
-
 
   //AUDIO
   #define MAX_STATIONS 19  //DO NOT INCREASE !!! (IT LOOKS UGLY ...)
