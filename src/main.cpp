@@ -641,10 +641,13 @@ void setup()
 
   // SparkOfCode: Tune encoder pins for encoders with or without pullup resistors
   #ifdef USE_ENCODER_TUNE_SM // Tune encoder implemented as state machine
-  //pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
-  //pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
-  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
-  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
+    #ifdef USE_ENC_TUNE_INTERNAL_PULLUP
+      pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+      pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
+    #else
+      pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
+      pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
+    #endif
   #endif
 
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);

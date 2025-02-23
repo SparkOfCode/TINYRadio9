@@ -27,10 +27,8 @@
 //SparkOfCode
 //Uncomment to use encoder for volume implemented as state machine
 #define USE_ENCODER_TUNE_SM
-
-//SparkOfCode
-//Uncomment next line if you want to use an external DAC module (e.g. UDA1344, allows stereo)
-#define USE_EXTERNAL_DAC
+//Uncomment if your encoder has no pullup resistors and you need the internal GPIO pullups of ESP32
+#define USE_ENC_TUNE_INTERNAL_PULLUP
 
 //SparkOfCode
 //Uncomment next line if you want to use a potentiometer on ADC for volume control

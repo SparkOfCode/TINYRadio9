@@ -6,16 +6,20 @@
 #include "Audio.h"     // see my repository at github "ESP32-audioI2S"
 #include "audiotask.h"
 
+//SparkOfCode
+//Uncomment next line if you want to use an external DAC module (e.g. UDA1344, allows stereo)
+#define USE_EXTERNAL_DAC
+
 #ifdef USE_EXTERNAL_DAC
-  /* I2S Pins for internal DAC (mono only) */
-  #define WT_I2S_BCK 36
-  #define WT_I2S_WS  35
-  #define WT_I2S_DATA 37
-#else
   /* I2S Pins for DAC module on external interface (e.g. UDA1344, enables stereo) */
   #define WT_I2S_BCK 13 // white
   #define WT_I2S_WS  11 // blue
   #define WT_I2S_DATA 12 // green
+#else
+  /* I2S Pins for internal DAC (mono only) */
+  #define WT_I2S_BCK 36
+  #define WT_I2S_WS  35
+  #define WT_I2S_DATA 37
 #endif
 
 #define I2S_COMM_FMT        0   
