@@ -31,7 +31,7 @@ Due to lack of a speaker, I have not tested this setup myself.
 - //#define USE_ENCODER_TUNE_SM in include/tinyDefs.h
 
 ### External DAC
-If you prefer a stereo line out connection, you can use an external DAC (encoder). I tested with the [DAC board from Adafruit]https://www.adafruit.com/product/3678 but there are several other options.
+If you prefer a stereo line out connection, you can use an external DAC (decoder). I tested with the [DAC board from Adafruit](https://www.adafruit.com/product/3678) but there are several other options.
 - Connect external DAC to VCC and GND. The I2S interface is connected to GPIO 11, 12 and 13.
 - #define USE_EXTERNAL_DAC in lib/AudioTask/src/audiotask.cpp
 
@@ -48,7 +48,7 @@ A rotary encoder can be used to switch between stations. This code implements a 
 
 ## Upload
 - Connect pin 6 of the debug connector to GND - on the debug connector, these are pins 6 and 7. **Make sure not to short-circuit the wrong side of the connector, this may destroy your board!!**
-The right pins (6 and 7) are the two pins directly above the reset button: 
+The right pins (6 and 7) are the two pins directly above the reset button:  
 ![Debug Port](images/DebugPort.jpg)
 - Press reset to enable flash mode
 - Build and upload
