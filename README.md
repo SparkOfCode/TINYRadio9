@@ -54,3 +54,6 @@ The right pins (6 and 7) are the two pins directly above the reset button:
 - Build and upload
 - Disconnect pin 6 from GND and power cycle the board
 - Enjoy!
+
+## Known Issues
+https radio stations cannot be played due to a memory allocation error. Use http instead.
