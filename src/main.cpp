@@ -37,8 +37,11 @@ bool _drdStopped = false;
 SemaphoreHandle_t lvgl_mux;
 
 // ENCODER
+// SparkOfCode: include library only if needed
+#if ( USE_ENCODER_VOLUME || USE_ENCODER_TUNE)
 #include "AiEsp32RotaryEncoder.h"
 #define ROTARY_ENCODER_STEPS 4
+#endif
 
 // VOLUME_ENCODER
 #ifdef USE_ENCODER_VOLUME
@@ -363,12 +366,75 @@ const char NewCustomsStyle[] PROGMEM =
     "button{background-color:blue;color:white;line-height:2.4rem;font-size:1.2rem;width:100%;}fieldset{border-radius:0.3rem;margin:0px;}</style>";
 #endif
 
+// SparkOfCode: Encoder as state machine
+#ifdef USE_ENCODER_TUNE_SM
+int encoderChanged() // char used for 8-bit signed integer; -1: counter-clockwise; 0: no change; 1: clockwise
+{
+  static uint8_t state = 0;
+  bool CLKstate = digitalRead(ENC_TUNE_B_PIN);
+  bool DTstate = digitalRead(ENC_TUNE_A_PIN);
+  switch (state)
+  {
+  case 0: // Coming from idle state, encoder not turning
+    if (!CLKstate)
+    { // Turn clockwise: CLK goes low first
+      state = 1;
+    }
+    else if (!DTstate)
+    { // Turn anticlockwise: DT goes low first
+      state = 4;
+    }
+    return 0;
+  case 1: // Clockwise rotation phase 2
+    if (!DTstate)
+    { // Continue clockwise: DT will go low after CLK
+      state = 2;
+    }
+//    return 0;
+  case 2: // Clockwise rotation phase 3: turn further and CLK will go high first
+    if (CLKstate)
+    {
+      state = 3;
+    }
+    return 0;
+  case 3: // Clockwise rotation phase 4: both CLK and DT now high as the encoder completes one step clockwise
+    if (CLKstate && DTstate)
+    {
+      state = 0;
+      return 1;
+    }
+    return 0;
+  case 4: // Anticlockwise: CLK and DT reversed
+    if (!CLKstate)
+    {
+      state = 5;
+    }
+    return 0;
+  case 5:
+    if (DTstate)
+    {
+      state = 6;
+    }
+    return 0;
+  case 6:
+    if (CLKstate && DTstate)
+    {
+      state = 0;
+      return -1;
+    }
+    return 0;
+  };
+  return 0;
+}
+#endif
+
 void setup()
 {
+  
   // Debug console
   static const char *TAG = "SETUP";
 
-  //Serial.begin(115200);
+  // Serial.begin(115200);
   // delay(3000);                  //NEEDED BECAUSE OF USB-C
   // Serial.setDebugOutput(true);
   // Serial.flush();
@@ -573,6 +639,14 @@ void setup()
   tuneEncoder.setEncoderValue(GUI.getStationMidX(_lastStation));
 #endif
 
+  // SparkOfCode: Tune encoder pins for encoders with or without pullup resistors
+  #ifdef USE_ENCODER_TUNE_SM // Tune encoder implemented as state machine
+  //pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
+  //pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
+  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
+  #endif
+
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.tuneToStation(_lastStation);
   xSemaphoreGiveRecursive(lvgl_mux);
@@ -662,17 +736,16 @@ void pot_volume_loop()
 {
   // dont do anything unless value changed - use moving average to prevent erratic jumping between adjacent steps
   volPotValueNew = (volPotValueNew * 19 + analogRead(POT_VOL_PIN)) / 20; // 0..4095
-  if (abs(volPotValueNew-volPotValue) > (4096/VOLUME_STEPS)) // 
+  if (abs(volPotValueNew - volPotValue) > (4096 / VOLUME_STEPS))         //
   {
     volPotValue = volPotValueNew;
-    _lastVolume = map(volPotValue, 0, 4095, 0, VOLUME_STEPS-1);
+    _lastVolume = map(volPotValue, 0, 4095, 0, VOLUME_STEPS - 1);
     audioSetVolume(_lastVolume);
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     GUI.setVolumeIndicator(_lastVolume);
     xSemaphoreGiveRecursive(lvgl_mux);
-    //Serial.println(_lastVolume);   
   }
-}  
+}
 #endif
 
 void loop()
@@ -706,11 +779,26 @@ void loop()
     rotary_tune_loop();
 #endif
 
+// SparkOfCode TUNE_ENCODER_SM
+#ifdef USE_ENCODER_TUNE_SM
+    int charEncoderChanged;
+    charEncoderChanged = encoderChanged();
+    if (charEncoderChanged == 1) // clockwise
+    {
+      gui_station_next();
+    }
+    if (charEncoderChanged == -1) // counter-clockwise
+    {
+      gui_station_prev();
+    }
+#endif
+
 // SparkOfCode: Volume Potentiometer
 #ifdef USE_POT_VOLUME
     pot_volume_loop();
 #endif
   }
+
 }
 
 // ************** WIFI_MANAGER CALLBACKS *************************************

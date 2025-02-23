@@ -22,7 +22,11 @@
 //#define USE_ENCODER_VOLUME
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR TUNING
-#define USE_ENCODER_TUNE 
+//#define USE_ENCODER_TUNE 
+
+//SparkOfCode
+//Uncomment to use encoder for volume implemented as state machine
+#define USE_ENCODER_TUNE_SM
 
 //SparkOfCode
 //Uncomment next line if you want to use an external DAC module (e.g. UDA1344, allows stereo)
@@ -43,6 +47,14 @@
 #ifdef USE_ENCODER_TUNE
 //PINS
   #define ENC_TUNE_BUTTON_PIN     42
+  #define ENC_TUNE_A_PIN          14
+  #define ENC_TUNE_B_PIN          21
+#endif
+
+//SparkOfCode
+#ifdef USE_ENCODER_TUNE_SM
+//PINS
+  #define ENC_TUNE_BUTTON_PIN     42 // not used, should be commented out eventually to avoid side effects
   #define ENC_TUNE_A_PIN          14
   #define ENC_TUNE_B_PIN          21
 #endif
