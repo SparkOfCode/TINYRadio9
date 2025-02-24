@@ -31,13 +31,13 @@ Due to lack of a speaker, I have not tested this setup myself.
 - //#define USE_ENCODER_TUNE_SM in include/tinyDefs.h
 
 ### External DAC
-If you prefer a stereo line out connection, you can use an external DAC (decoder). I tested with the [DAC board from Adafruit](https://www.adafruit.com/product/3678) but there are several other options.
+If you prefer stereo, you can use an external DAC (decoder). I tested with the [DAC board from Adafruit](https://www.adafruit.com/product/3678) with stereo line out. There are several other options, e.g. MAX98357A with built-in amplifier.
 - Connect external DAC to VCC and GND. The I2S interface is connected to GPIO 11, 12 and 13.
 - #define USE_EXTERNAL_DAC in lib/AudioTask/src/audiotask.cpp
 
 ### Volume Potentiometer
 Volume can be controlled by a potentiometer (10k, linear), optional with power switch for the radio.
-- Connect potentiometer to GND, GPIO 10 and 3.3V (**NOT 5V, this can destroy your board!!!)
+- Connect potentiometer to GND, GPIO 10 and 3.3V (**NOT 5V, this can destroy your board!!**)
 - #define USE_POT_VOLUME in include/tinyDefs.h
 
 ### Station Switch
