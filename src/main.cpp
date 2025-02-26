@@ -38,7 +38,7 @@ SemaphoreHandle_t lvgl_mux;
 
 // ENCODER
 // SparkOfCode: include library only if needed
-#if ( USE_ENCODER_VOLUME || USE_ENCODER_TUNE)
+#if ( defined(USE_ENCODER_VOLUME) || defined(USE_ENCODER_TUNE))
 #include "AiEsp32RotaryEncoder.h"
 #define ROTARY_ENCODER_STEPS 4
 #endif
@@ -46,12 +46,10 @@ SemaphoreHandle_t lvgl_mux;
 // VOLUME_ENCODER
 #ifdef USE_ENCODER_VOLUME
 AiEsp32RotaryEncoder volumeEncoder = AiEsp32RotaryEncoder(ENC_VOLUME_A_PIN, ENC_VOLUME_B_PIN, ENC_VOUME_BUTTON_PIN, -1, ROTARY_ENCODER_STEPS);
-
 void IRAM_ATTR volume_readEncoderISR()
 {
   volumeEncoder.readEncoder_ISR();
 }
-
 #endif
 
 // TUNE_ENCODER
@@ -80,8 +78,11 @@ RetroGUI GUI;
 
 // STATIONS
 #include "Stations.h"
-static Stations tinyStations;
-TinyStations stations(tinyStations);
+uint8_t currentPage = 0;
+//xxx
+//static typeArrStations arrTinyStations; // array[19] of typeStructTinyStation
+//clTinyStations stations(arrTinyStations);
+clTinyStations stations[4];
 
 // AUDIO
 #include "Audio.h" //wolle aka schreibfaul1
@@ -107,7 +108,7 @@ const char defaultJson[] PROGMEM = R"=====(
 "StreamURL":"http://www.radioeins.de/livemp3"},
 {"shortName":"COSTA.D.MAR",
 "StreamURL":"http://radio4.cdm-radio.com:8020/stream-mp3-Chill_autodj"},
-{"shortName":"Kiss.FM",
+{"shortName":"Kissme.FM",
 "StreamURL":"http://topradio-stream31.radiohost.de/kissfm_mp3-128"},
 {"shortName":"paradise",
 "StreamURL":"http://stream-uk1.radioparadise.com/aac-320"}
@@ -189,8 +190,9 @@ String loadSettings() // ONLY FOR WEBSERVER-CONFIG
 
     if (payload != "")
     {
-      stations.loadFromJson(tinyStations, payload);
-      _num_stations = tinyStations.size();
+      //stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
+      stations[currentPage].loadFromJson(currentPage, payload);
+      _num_stations = stations[currentPage].arrStations.size();
 
       if (_lastStation > _num_stations - 1)
       {
@@ -211,8 +213,9 @@ bool saveSettings(String payload)
 {
   // UPDATE GUI
 
-  stations.loadFromJson(tinyStations, payload);
-  _num_stations = tinyStations.size();
+//  stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
+  stations[currentPage].loadFromJson(currentPage, payload);
+  _num_stations = stations[currentPage].arrStations.size();
 
   if (_lastStation > _num_stations - 1)
   {
@@ -235,13 +238,15 @@ bool saveSettings(String payload)
 
     // UPDATE GUI
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-    GUI.setStations(tinyStations);
+    typeArrStations* ptrArrStations;
+    //ptrArrStations = &stations[currentPage].arrStations; 
+    GUI.setStations(&stations[currentPage].arrStations);
     GUI.update(payload);
     GUI.tuneToStation(_lastStation);
     GUI.setVolumeIndicator(_lastVolume);
     GUI.updateDRDindicator(_drdStopped);
     xSemaphoreGiveRecursive(lvgl_mux);
-    audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
     LV_LOG_USER("GUI UPDATED");
   }
   else
@@ -434,7 +439,7 @@ void setup()
   // Debug console
   static const char *TAG = "SETUP";
 
-  // Serial.begin(115200);
+  Serial.begin(115200);
   // delay(3000);                  //NEEDED BECAUSE OF USB-C
   // Serial.setDebugOutput(true);
   // Serial.flush();
@@ -454,9 +459,11 @@ void setup()
   createLVGL_Task();
 
   // WE NEED A TEMPORARY MESSAGE (IF SOMETHING IS TO KNOW)
+  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), LV_PART_MAIN);
   tempLabel = lv_label_create(lv_scr_act());
   lv_obj_set_size(tempLabel, LV_SIZE_CONTENT, LV_SIZE_CONTENT); // 90% WIDTH OF PARENT
   lv_obj_align(tempLabel, LV_ALIGN_CENTER, 0, 0);               // CENTER ON PARENT
+  lv_obj_set_style_text_color(tempLabel, lv_color_hex(0xffa500), LV_PART_MAIN);
   lv_obj_set_style_text_font(tempLabel, &Berlin25_4, 0);        // CUSTOM FONT
   lv_obj_set_style_text_align(tempLabel, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_clear_flag(tempLabel, LV_OBJ_FLAG_SCROLLABLE); // DON'T USE SCROLLBARS
@@ -554,7 +561,7 @@ void setup()
   //**************************************************************************
   //                              GUI
   //**************************************************************************
-  // WE DONN'T NEED IT ANYMORE
+  // WE DON'T NEED THE STARTUP LABEL ANYMORE
   if (tempLabel)
   {
     lv_obj_delete(tempLabel);
@@ -566,8 +573,12 @@ void setup()
 
   // STATIONS, COLORS ..
   String jsonSettings = loadJSON();
-  stations.loadFromJson(tinyStations, jsonSettings);
-  _num_stations = tinyStations.size();
+  for(int i=0; i<4; i++)
+  {
+//    stations[i].loadFromJson(stations[i].arrStations, i+1, jsonSettings);
+    stations[i].loadFromJson(i+1, jsonSettings);
+  };
+  _num_stations = stations[currentPage].arrStations.size();
 
   // LAST_VOLUME, LAST_STATION
   loadPrefs();
@@ -596,7 +607,7 @@ void setup()
 
   // PUSH TO GUI
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-  GUI.setStations(tinyStations);
+  GUI.setStations(&stations[currentPage].arrStations);
   GUI.begin(lv_scr_act(), jsonSettings);
   xSemaphoreGiveRecursive(lvgl_mux);
 
@@ -653,7 +664,7 @@ void setup()
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.tuneToStation(_lastStation);
   xSemaphoreGiveRecursive(lvgl_mux);
-  audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+  audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
 
   createVU_Task();
 }
@@ -885,7 +896,7 @@ void gui_station_next()
     GUI.tuneToStation(_lastStation);
     xSemaphoreGiveRecursive(lvgl_mux);
 
-    audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
     savePrefs();
   }
 }
@@ -900,7 +911,20 @@ void gui_station_prev()
     GUI.tuneToStation(_lastStation);
     xSemaphoreGiveRecursive(lvgl_mux);
 
-    audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
     savePrefs();
   }
 }
+
+void gui_setPage(int Page)
+{
+  Serial.println(Page);
+  currentPage = Page-1; // Page 1..4 is array index 0..3
+  _lastStation = 1;
+  xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+  GUI.swapPage(currentPage, &stations[currentPage].arrStations);
+  xSemaphoreGiveRecursive(lvgl_mux);
+  audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+  savePrefs();
+
+};

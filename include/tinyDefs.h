@@ -19,20 +19,24 @@
 #define USE_VU_METER
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR VOLUME
-//#define USE_ENCODER_VOLUME
+#define USE_ENCODER_VOLUME
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR TUNING
 //#define USE_ENCODER_TUNE 
 
 //SparkOfCode
 //Uncomment to use encoder for volume implemented as state machine
-#define USE_ENCODER_TUNE_SM
+//#define USE_ENCODER_TUNE_SM
 //Uncomment if your encoder has no pullup resistors and you need the internal GPIO pullups of ESP32
 #define USE_ENC_TUNE_INTERNAL_PULLUP
 
 //SparkOfCode
 //Uncomment next line if you want to use a potentiometer on ADC for volume control
-#define USE_POT_VOLUME
+//#define USE_POT_VOLUME
+
+//SparkOfCode
+//Uncomment next line if you want to have 4 pages with different stations (select page via button)
+#define USE_PAGES
 
 //ENCODER PINS
 #ifdef USE_ENCODER_VOLUME
@@ -63,6 +67,18 @@
 
 #define HOST_NAME   "TinyRadio" //FOR CONNECT VIA BROWSER -> use TinyRadio.local !
 
+#ifdef USE_PAGES
+  #define BUTTON1_TEXT "LW"
+  #define BUTTON2_TEXT "MW"
+  #define BUTTON3_TEXT "KW"
+  #define BUTTON4_TEXT "UKW"
+#else
+  #define BUTTON1_TEXT LV_SYMBOL_VOLUME_MID
+  #define BUTTON2_TEXT LV_SYMBOL_PREV
+  #define BUTTON3_TEXT LV_SYMBOL_NEXT
+  #define BUTTON4_TEXT LV_SYMBOL_VOLUME_MAX
+#endif
+
 //********************************************************************************
 //*********  DON'T CHANGE ANYTHING BELOW THIS LINE !! ****************************
 //********************************************************************************
@@ -71,7 +87,9 @@
 //BUTTONMATRIX SYMBOLS
 //NO ENCODER
 #if !defined(USE_ENCODER_VOLUME) && !defined(USE_ENCODER_TUNE)
-  static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
+// SparkOfCode
+//  static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
+  static const char *btnm_map[5] = {BUTTON1_TEXT, BUTTON2_TEXT, BUTTON3_TEXT, BUTTON4_TEXT,""};
   #define VOLUME_STEPS 20
   #define TUNE_STEPS    4
 #endif
@@ -104,15 +122,13 @@
   #define INDICATOR_MOVE_TIME 2000 // 2 sec. (2000 mS) from left to right
 
   //AUDIO
-  #define MAX_STATIONS 19  //DO NOT INCREASE !!! (IT LOOKS UGLY ...)
+  #define MAX_STATIONS_PER_PAGE 19  //DO NOT INCREASE !!! (IT LOOKS UGLY ...)
 
   //LVGL
   #define LVGL_TASK_DELAY_MS   10
 
   #define LVGL_TASK_CORE 1
   #define LVGL_TASK_PRIO 5
-
-
 
   // //PREFERENCES
   #define PREFS_NAME    "TinyRadio"

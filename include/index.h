@@ -43,7 +43,7 @@ const char index_partOne[] PROGMEM = R"=====(
        }
        div,input,select {
            padding:5px;
-           font-size:1em;
+           font-size:1rem;
            margin:5px 0;
            box-sizing:border-box
        }
@@ -316,7 +316,7 @@ const char index_partOne[] PROGMEM = R"=====(
 
        input[type="button"] {
            font-family: 'Courier New', monospace;
-           font-size: 1.5rem;
+           font-size: 1rem;
            width: 100%;
            }
 
@@ -354,13 +354,13 @@ const char index_partOne[] PROGMEM = R"=====(
  JSONEditor.defaults.language = "de";
         JSONEditor.defaults.languages.de = {
             button_add_row_title: 'Neue {{0}} hinzufügen',
-            button_move_down_title: 'nach unten',
-            button_move_up_title: 'nach oben',
+            button_move_down_title: ' ▼ ',
+            button_move_up_title: ' ▲ ',
             button_delete_last_title: 'Letze {{0}} löschen',
             button_delete_all_title: 'Alle löschen',
             button_delete_row_title: '{{0}} löschen',
-            button_delete_row_title_short: 'Löschen',
-            button_delete_node_warning: 'Sind sie sicher ?',
+            button_delete_row_title_short: '❌',
+            button_delete_node_warning: 'Soll die Station endgültig gelöscht werden?',
         }
         
       // Initialize the editor with a JSON schema
@@ -419,7 +419,11 @@ const char index_partOne[] PROGMEM = R"=====(
                     "StreamURL": {
                       "title": "StreamURL",
                       "type": "string"
-                    }
+                    },
+                    "Page": {
+                      "title": "Page (1-4)",
+                      "type": "number"
+                    }                
                   }
                 }
               }

@@ -244,7 +244,7 @@ void init_display() {
 
     static lv_display_t *display = lv_display_create(TFT_HOR_RES, TFT_VER_RES);
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
-
+    
     lv_display_set_flush_cb(display, [](lv_display_t* display, const lv_area_t* area, unsigned char* data) {
         if (tft.getStartCount() == 0)
         {   // Processing if not yet started
