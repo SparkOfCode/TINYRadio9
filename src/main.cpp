@@ -38,7 +38,7 @@ SemaphoreHandle_t lvgl_mux;
 
 // ENCODER
 // SparkOfCode: include library only if needed
-#if ( USE_ENCODER_VOLUME || USE_ENCODER_TUNE)
+#if ( defined(USE_ENCODER_VOLUME) || defined(USE_ENCODER_TUNE) )
 #include "AiEsp32RotaryEncoder.h"
 #define ROTARY_ENCODER_STEPS 4
 #endif
