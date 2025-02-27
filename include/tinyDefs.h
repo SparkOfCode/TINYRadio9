@@ -1,4 +1,3 @@
-
 /****************************************************************************************************************************
   This is for  WT32_SC01_PLUS boards only !
 
@@ -6,33 +5,31 @@
 
   by DrNeurosurg 2024
 
-  *****************************************************************************************************************************/
+*****************************************************************************************************************************/
  
 #ifndef _TINY_DEFS_H_
 #define _TINY_DEFS_H_
 
-
 #include <lvgl.h>
 
-
-//COMMENT NEXT LINE, IF YOU WANT TO USE "EM11" FOR VU-METER
+//UNCOMMENT NEXT LINE, IF YOU WANT TO USE "EM11" FOR VU-METER
 #define USE_VU_METER
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR VOLUME
-#define USE_ENCODER_VOLUME
+//#define USE_ENCODER_VOLUME
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR TUNING
 //#define USE_ENCODER_TUNE 
 
 //SparkOfCode
 //Uncomment to use encoder for volume implemented as state machine
-//#define USE_ENCODER_TUNE_SM
+#define USE_ENCODER_TUNE_SM
 //Uncomment if your encoder has no pullup resistors and you need the internal GPIO pullups of ESP32
 #define USE_ENC_TUNE_INTERNAL_PULLUP
 
 //SparkOfCode
 //Uncomment next line if you want to use a potentiometer on ADC for volume control
-//#define USE_POT_VOLUME
+#define USE_POT_VOLUME
 
 //SparkOfCode
 //Uncomment next line if you want to have 4 pages with different stations (select page via button)
@@ -132,7 +129,11 @@
 
   // //PREFERENCES
   #define PREFS_NAME    "TinyRadio"
-  #define LAST_STATION  "rec_lastStation"
+  #define LAST_PAGE  "rec_lastPage"
+  #define LAST_STATION_PAGE1  "rec_lstSt_P1"
+  #define LAST_STATION_PAGE2  "rec_lstSt_P2"
+  #define LAST_STATION_PAGE3  "rec_lstSt_P3"
+  #define LAST_STATION_PAGE4  "rec_lstSt_P4"
   #define LAST_VOLUME   "rec_lastVolume"
 
   // // GUI

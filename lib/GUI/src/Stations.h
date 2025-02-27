@@ -14,7 +14,7 @@
 #include <Array.h>
 #include <ArduinoJson.h>
 
-#define MAX_STATIONS 19 // 4 pages with 19 stations each
+#define MAX_STATIONS 19 // 19 stations per page
 
 typedef struct
 {
@@ -33,50 +33,57 @@ class clTinyStations
 {
 
 public:
-  
   typeArrStations arrStations; // array[19] of typeStructTinyStation
+  uint8_t lastStation; // last station of page
 
   clTinyStations() // Constructor
+    {
+      lastStation;
+  //  Serial.println(ESP.getFreeHeap());
+  //  delay(1000);
+  //  arrStations.clear();
+
+  // typeStructTinyStation station;
+
+  /*    station.ShortName = "COSTA.D.MAR";
+      station.URL = "http://radio4.cdm-radio.com:8020/stream-mp3-Chill_autodj";
+      station.index = 0;
+      arrStations.push_back(station);
+
+      station.ShortName = "kiss.fm";
+      station.URL = "http://topradio-stream31.radiohost.de/kissfm_mp3-128";
+      station.index = 1;
+      arrStations.push_back(station);
+
+      station.ShortName = "baelaric";
+      station.URL = "https://radio.balearic-fm.com:8000/radio.mp3";
+      station.index = 2;
+      arrStations.push_back(station);
+
+      station.ShortName = "lounge.ch";
+      station.URL = "http://fr1.streamhosting.ch/lounge128.mp3";
+      station.index = 3;
+      arrStations.push_back(station);
+
+      station.ShortName = "paradise";
+      station.URL = "http://stream-uk1.radioparadise.com/aac-320";
+      station.index = 4;
+      arrStations.push_back(station);
+      delay(1000);*/
+    }
+
+  typeArrStations *getArrStations()
   {
-    Serial.println(ESP.getFreeHeap());
-    delay(1000);
-    arrStations.clear();
-
-    typeStructTinyStation station;
-
-    station.ShortName = "COSTA.D.MAR";
-    station.URL = "http://radio4.cdm-radio.com:8020/stream-mp3-Chill_autodj";
-    station.index = 0;
-    arrStations.push_back(station);
-
-    station.ShortName = "kiss.fm";
-    station.URL = "http://topradio-stream31.radiohost.de/kissfm_mp3-128";
-    station.index = 1;
-    arrStations.push_back(station);
-
-    station.ShortName = "baelaric";
-    station.URL = "https://radio.balearic-fm.com:8000/radio.mp3";
-    station.index = 2;
-    arrStations.push_back(station);
-
-    station.ShortName = "lounge.ch";
-    station.URL = "http://fr1.streamhosting.ch/lounge128.mp3";
-    station.index = 3;
-    arrStations.push_back(station);
-
-    station.ShortName = "paradise";
-    station.URL = "http://stream-uk1.radioparadise.com/aac-320";
-    station.index = 4;
-    arrStations.push_back(station);
-    delay(1000);
+    return (&arrStations);
   }
 
-//  void loadFromJson(typeArrStations &arrStations, uint16_t Page, String json)
-  void loadFromJson(uint16_t Page, String json)
+  void loadFromJson(uint16_t Page, String *json)
   {
+    Serial.println(Page);
+    Serial.println(*json);
     JsonDocument doc;
 
-    DeserializationError error = deserializeJson(doc, json.c_str());
+    DeserializationError error = deserializeJson(doc, (*json).c_str());
 
     if (error)
     {
@@ -95,8 +102,7 @@ public:
       _station.ShortName = station["shortName"].as<String>();
       _station.URL = station["StreamURL"].as<String>();
       _station.index = idx;
-      //if(station["Page"].as<String>() == Page)
-      if(station["Page"] == Page)
+      if (station["Page"] == Page)
       {
         arrStations.push_back(_station);
       };

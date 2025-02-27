@@ -214,6 +214,11 @@ public:
         update(json);
     }
 
+    void setPage(uint8_t* page)
+    {
+        _currentPage = *page;
+    }
+
     void setStations(typeArrStations* stations)
     {
         _stations = *stations;
@@ -398,13 +403,14 @@ public:
         return _stations[stationIndex].midX;
     }
 
-    void swapPage(uint8_t Page, typeArrStations* arrStations)
+    void swapPage(uint8_t Page, uint8_t station, typeArrStations* arrStations)
     {
         lv_obj_clean(mid);
+        setPage(&Page);
         setStations(arrStations);
         createStationList(mid);
         station_indicator = createStationIndicator(mid);
-        tuneToStation(1);
+        tuneToStation(station);
     }
 
 /************************************************************
@@ -417,6 +423,7 @@ private:
     uint8_t _maxVolume;
     uint8_t _volumePercent; // FOR BAR
     uint8_t _volume;
+    uint8_t _currentPage;
     uint32_t _lastStationMid = 0;
 
     uint32_t _pointer_width = 8;
@@ -428,7 +435,7 @@ private:
     lv_obj_t *volume_indicator;  // VOLUME
     lv_obj_t *tl;                // TOP LEFT
     lv_obj_t *tr;                // TOP RIGHT
-    lv_obj_t * mid; //MIDDLE moved to public
+    lv_obj_t * mid; //MIDDLE
     lv_obj_t *bot_upper; // BOTTOM
     lv_obj_t *bot_lower; // BOTTOM
     lv_obj_t *stationList;
@@ -457,6 +464,7 @@ private:
     lv_style_t playing_style;
     lv_style_t playing_style_inv;
     lv_style_t button_style;
+    lv_style_t button_style_pressed;
     lv_style_t scale_style;
     lv_style_t vuMeter_style;
 
@@ -619,6 +627,38 @@ private:
         lv_style_set_pad_all(&button_style, 1);
         lv_style_set_pad_gap(&button_style, 1);
 
+        // Pressed Button
+        uint32_t _buttonColorPressed = 0xcb58350;
+        lv_style_init(&button_style_pressed);
+        lv_color_t color3b = lv_color_hex(_buttonColorPressed);
+        lv_color_t color4b = lv_color_darken(color3b, 64);
+        lv_style_set_radius(&button_style_pressed, 4);
+        lv_style_set_bg_opa(&button_style_pressed, LV_OPA_COVER);
+
+        static lv_grad_dsc_t grad_bp;
+        grad_bp.dir = LV_GRAD_DIR_VER;
+
+        grad_bp.stops_count = 3;
+
+        grad_bp.stops[0].color = color4b;
+        grad_bp.stops[0].opa = LV_OPA_COVER;
+        grad_bp.stops[0].frac = 0;
+
+        grad_bp.stops[1].color = color3b;
+        grad_bp.stops[1].opa = LV_OPA_COVER;
+        grad_bp.stops[1].frac = 100;
+
+        grad_bp.stops[2].color = color4b;
+        grad_bp.stops[2].opa = LV_OPA_COVER;
+        grad_bp.stops[2].frac = 255;
+
+        lv_style_set_bg_grad(&button_style_pressed, &grad_bp);
+        lv_style_set_border_color(&button_style_pressed, lv_color_black());
+        lv_style_set_border_width(&button_style_pressed, 0);
+
+        lv_style_set_pad_all(&button_style_pressed, 1);
+        lv_style_set_pad_gap(&button_style_pressed, 1);
+        
         // VOLUME SCALE
         lv_style_init(&scale_style);
         lv_style_set_radius(&scale_style, 0);
@@ -670,20 +710,6 @@ private:
         return ret;
     }
 
-    lv_obj_t *createSingleButton(lv_obj_t *parent, const char *caption)
-    {
-
-        lv_obj_t *btn = lv_button_create(parent);
-        lv_obj_remove_style_all(btn);
-        lv_obj_add_style(btn, &button_style, 0);
-
-        lv_obj_t *label = lv_label_create(btn);
-        lv_label_set_text(label, caption);
-        lv_obj_center(label);
-
-        return btn;
-    }
-
     lv_obj_t *createButtons(lv_obj_t *parent)
     {
         lv_obj_update_layout(parent);
@@ -699,10 +725,17 @@ private:
         lv_obj_set_style_pad_column(btn_matrix, 2, LV_PART_MAIN);
 
         lv_buttonmatrix_set_map(btn_matrix, btnm_map);
-
+        lv_buttonmatrix_set_button_ctrl_all(btn_matrix, LV_BTNMATRIX_CTRL_CHECKABLE | LV_BTNMATRIX_CTRL_NO_REPEAT);
         lv_obj_align(btn_matrix, LV_ALIGN_BOTTOM_MID, 0, 0);                              // BOTTOM ON PARENT
-        lv_obj_clear_flag(btn_matrix, LV_OBJ_FLAG_SCROLLABLE);                            // DON'T USE SCROLLBARS
+        lv_obj_remove_flag(btn_matrix, LV_OBJ_FLAG_SCROLLABLE);                            // DON'T USE SCROLLBARS
+
+        // One button at a time
+        lv_buttonmatrix_set_one_checked(btn_matrix, true);
+        lv_obj_add_style(btn_matrix, &button_style_pressed, LV_PART_ITEMS | LV_STATE_CHECKED);
+        lv_buttonmatrix_set_button_ctrl(btn_matrix, _currentPage, LV_BUTTONMATRIX_CTRL_CHECKED | LV_BUTTONMATRIX_CTRL_CHECKABLE);
+
         lv_obj_add_event_cb(btn_matrix, _event_handler_buttonmatrix, LV_EVENT_ALL, NULL); // ADD EVENT_HANDLER
+//        lv_buttonmatrix_set_selected_button(btn_matrix, 2);
 
         return btn_matrix;
     }

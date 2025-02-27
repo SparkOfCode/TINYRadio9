@@ -79,10 +79,7 @@ RetroGUI GUI;
 // STATIONS
 #include "Stations.h"
 uint8_t currentPage = 0;
-//xxx
-//static typeArrStations arrTinyStations; // array[19] of typeStructTinyStation
-//clTinyStations stations(arrTinyStations);
-clTinyStations stations[4];
+clTinyStations* stations[4]; // array of pointers - objects must be initialized later!
 
 // AUDIO
 #include "Audio.h" //wolle aka schreibfaul1
@@ -116,6 +113,7 @@ const char defaultJson[] PROGMEM = R"=====(
 )=====";
 
 uint8_t _lastVolume = 5;
+uint8_t _lastPage = 1;
 uint8_t _lastStation = 0;
 uint16_t _vum = 0;
 
@@ -133,9 +131,20 @@ void savePrefs()
 {
   preferences.begin(PREFS_NAME, false);
   preferences.putLong(LAST_VOLUME, _lastVolume);
-  preferences.putLong(LAST_STATION, _lastStation);
+  preferences.putLong(LAST_PAGE, currentPage);
+  preferences.putLong(LAST_STATION_PAGE1, stations[0]->lastStation);
+  preferences.putLong(LAST_STATION_PAGE2, stations[1]->lastStation);
+  preferences.putLong(LAST_STATION_PAGE3, stations[2]->lastStation);
+  preferences.putLong(LAST_STATION_PAGE4, stations[3]->lastStation);
   preferences.end();
   LV_LOG_USER("SETTINGS SAVED");
+  Serial.print("currentPage saved to preferences: ");
+  Serial.println(currentPage);
+  Serial.println("last stations saved to preferences: ");
+  Serial.println(stations[0]->lastStation);
+  Serial.println(stations[1]->lastStation);
+  Serial.println(stations[2]->lastStation);
+  Serial.println(stations[3]->lastStation);
 }
 
 void loadPrefs()
@@ -146,9 +155,20 @@ void loadPrefs()
   {
     _lastVolume = VOLUME_STEPS / 2;
   } // HALF OF MAX
-  _lastStation = preferences.getLong(LAST_STATION, 0);
+  currentPage = preferences.getLong(LAST_PAGE, 0);
+  stations[0]->lastStation = preferences.getLong(LAST_STATION_PAGE1, 0);
+  stations[1]->lastStation = preferences.getLong(LAST_STATION_PAGE2, 0);
+  stations[2]->lastStation = preferences.getLong(LAST_STATION_PAGE3, 0);
+  stations[3]->lastStation = preferences.getLong(LAST_STATION_PAGE4, 0);
   preferences.end();
   LV_LOG_USER("SETTINGS LOADED");
+  Serial.print("currentPage loaded from preferences: ");
+  Serial.println(currentPage);
+  Serial.println("last stations loaded from preferences: ");
+  Serial.println(stations[0]->lastStation);
+  Serial.println(stations[1]->lastStation);
+  Serial.println(stations[2]->lastStation);
+  Serial.println(stations[3]->lastStation);
 }
 
 // ****************** UI SETTINGS (COLORS, STATIONS, ..) *******************************************
@@ -191,8 +211,8 @@ String loadSettings() // ONLY FOR WEBSERVER-CONFIG
     if (payload != "")
     {
       //stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
-      stations[currentPage].loadFromJson(currentPage, payload);
-      _num_stations = stations[currentPage].arrStations.size();
+      stations[currentPage]->loadFromJson(currentPage, &payload);
+      _num_stations = stations[currentPage]->arrStations.size();
 
       if (_lastStation > _num_stations - 1)
       {
@@ -214,8 +234,8 @@ bool saveSettings(String payload)
   // UPDATE GUI
 
 //  stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
-  stations[currentPage].loadFromJson(currentPage, payload);
-  _num_stations = stations[currentPage].arrStations.size();
+  stations[currentPage]->loadFromJson(currentPage, &payload);
+  _num_stations = stations[currentPage]->arrStations.size();
 
   if (_lastStation > _num_stations - 1)
   {
@@ -240,13 +260,13 @@ bool saveSettings(String payload)
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     typeArrStations* ptrArrStations;
     //ptrArrStations = &stations[currentPage].arrStations; 
-    GUI.setStations(&stations[currentPage].arrStations);
+    GUI.setStations(&stations[currentPage]->arrStations);
     GUI.update(payload);
     GUI.tuneToStation(_lastStation);
     GUI.setVolumeIndicator(_lastVolume);
     GUI.updateDRDindicator(_drdStopped);
     xSemaphoreGiveRecursive(lvgl_mux);
-    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
     LV_LOG_USER("GUI UPDATED");
   }
   else
@@ -448,6 +468,12 @@ void setup()
 
   LittleFS.begin(true, "/LittleFS");
 
+// initialize station objects
+for(int i=0; i<4; i++)
+{
+  stations[i] = new clTinyStations;
+};
+
   //**************************************************************************
   //                               LVGL
   //**************************************************************************
@@ -576,11 +602,11 @@ void setup()
   for(int i=0; i<4; i++)
   {
 //    stations[i].loadFromJson(stations[i].arrStations, i+1, jsonSettings);
-    stations[i].loadFromJson(i+1, jsonSettings);
+    stations[i]->loadFromJson(i+1, &jsonSettings);
   };
-  _num_stations = stations[currentPage].arrStations.size();
+  _num_stations = stations[currentPage]->arrStations.size();
 
-  // LAST_VOLUME, LAST_STATION
+  // last volume, last page, last station
   loadPrefs();
 
   // LAST_VOLUME
@@ -593,6 +619,8 @@ void setup()
     _lastVolume = 0;
   }
 
+  _lastStation = stations[currentPage]->lastStation;
+
   // LAST STATION
   if (_lastStation < 0)
   {
@@ -603,14 +631,26 @@ void setup()
     _lastStation = _num_stations - 1;
   }
 
-  savePrefs(); // TO BE SURE ...
+  // last page
+    if (currentPage < 0)
+  {
+    currentPage = 0;
+  }
+  if (currentPage > 3)
+  {
+    currentPage = 3;
+  }
+
+  savePrefs(); // to be sure...
 
   // PUSH TO GUI
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-  GUI.setStations(&stations[currentPage].arrStations);
+  GUI.setStations(stations[currentPage]->getArrStations());
   GUI.begin(lv_scr_act(), jsonSettings);
+  GUI.swapPage(currentPage, _lastStation, stations[currentPage]->getArrStations());
+  GUI.update(jsonSettings);
   xSemaphoreGiveRecursive(lvgl_mux);
-
+  
   //**************************************************************************
   //                               AUDIO
   //**************************************************************************
@@ -664,7 +704,7 @@ void setup()
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.tuneToStation(_lastStation);
   xSemaphoreGiveRecursive(lvgl_mux);
-  audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+  audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
 
   createVU_Task();
 }
@@ -892,11 +932,12 @@ void gui_station_next()
   if (_lastStation < _num_stations - 1)
   {
     _lastStation++;
+    stations[currentPage]->lastStation = _lastStation;
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     GUI.tuneToStation(_lastStation);
     xSemaphoreGiveRecursive(lvgl_mux);
 
-    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
     savePrefs();
   }
 }
@@ -906,12 +947,11 @@ void gui_station_prev()
   if (_lastStation > 0)
   {
     _lastStation--;
-
+    stations[currentPage]->lastStation = _lastStation;
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     GUI.tuneToStation(_lastStation);
     xSemaphoreGiveRecursive(lvgl_mux);
-
-    audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+    audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
     savePrefs();
   }
 }
@@ -920,11 +960,12 @@ void gui_setPage(int Page)
 {
   Serial.println(Page);
   currentPage = Page-1; // Page 1..4 is array index 0..3
-  _lastStation = 1;
+  _lastStation = stations[currentPage]->lastStation;
+  //Serial.println(_lastStation);
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-  GUI.swapPage(currentPage, &stations[currentPage].arrStations);
+  GUI.swapPage(currentPage, _lastStation, stations[currentPage]->getArrStations());
   xSemaphoreGiveRecursive(lvgl_mux);
-  audioConnecttohost(stations[currentPage].arrStations[_lastStation].URL.c_str());
+  audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
   savePrefs();
 
 };
