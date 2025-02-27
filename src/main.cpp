@@ -234,7 +234,7 @@ bool saveSettings(String payload)
   // UPDATE GUI
 
 //  stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
-  stations[currentPage]->loadFromJson(currentPage, &payload);
+  stations[currentPage]->loadFromJson(currentPage+1, &payload);
   _num_stations = stations[currentPage]->arrStations.size();
 
   if (_lastStation > _num_stations - 1)
@@ -257,6 +257,8 @@ bool saveSettings(String payload)
     LV_LOG_USER("FILE CLOSED");
 
     // UPDATE GUI
+    Serial.print("Update GUI (main:260) - currentPage: ");
+    Serial.println(currentPage);
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     typeArrStations* ptrArrStations;
     //ptrArrStations = &stations[currentPage].arrStations; 
