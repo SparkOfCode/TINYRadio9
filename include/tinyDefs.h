@@ -17,19 +17,20 @@
 
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR VOLUME
 //#define USE_ENCODER_VOLUME
-
+// SparkOfCode: temporary
+#define VOLUME_STEPS 50
 //UNCOMMENT NEXT LINE, IF YOU WANT TO USE ENCODER FOR TUNING
 //#define USE_ENCODER_TUNE 
 
 //SparkOfCode
 //Uncomment to use encoder for volume implemented as state machine
-#define USE_ENCODER_TUNE_SM
+//#define USE_ENCODER_TUNE_SM
 //Uncomment if your encoder has no pullup resistors and you need the internal GPIO pullups of ESP32
-#define USE_ENC_TUNE_INTERNAL_PULLUP
+//#define USE_ENC_TUNE_INTERNAL_PULLUP
 
 //SparkOfCode
 //Uncomment next line if you want to use a potentiometer on ADC for volume control
-#define USE_POT_VOLUME
+//#define USE_POT_VOLUME
 
 //SparkOfCode
 //Uncomment next line if you want to have 4 pages with different stations (select page via button)
@@ -43,12 +44,12 @@
   #define ENC_VOLUME_B_PIN        12
 #endif
 
-#ifdef USE_ENCODER_TUNE
+//#ifdef USE_ENCODER_TUNE
 //PINS
   #define ENC_TUNE_BUTTON_PIN     42
   #define ENC_TUNE_A_PIN          14
   #define ENC_TUNE_B_PIN          21
-#endif
+//#endif
 
 //SparkOfCode
 #ifdef USE_ENCODER_TUNE_SM
@@ -83,17 +84,18 @@
 
 //BUTTONMATRIX SYMBOLS
 //NO ENCODER
-#if !defined(USE_ENCODER_VOLUME) && !defined(USE_ENCODER_TUNE)
+//#if !defined(USE_ENCODER_VOLUME) && !defined(USE_ENCODER_TUNE)
 // SparkOfCode
+#ifdef USE_PAGES
 //  static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
   static const char *btnm_map[5] = {BUTTON1_TEXT, BUTTON2_TEXT, BUTTON3_TEXT, BUTTON4_TEXT,""};
-  #define VOLUME_STEPS 20
   #define TUNE_STEPS    4
 #endif
 
 //ONLY TUNE ENCODER
-#if !defined(USE_ENCODER_VOLUME) && defined(USE_ENCODER_TUNE)
+#if !defined(USE_ENCODER_VOLUME) && defined(USE_ENCODER_TUNE) && !defined(USE_PAGES)
   static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_VOLUME_MAX ,""};
+  #define TUNE_STEPS    4
 #endif
 
 //ONLY VOLUME ENCODER

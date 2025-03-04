@@ -38,7 +38,7 @@ SemaphoreHandle_t lvgl_mux;
 
 // ENCODER
 // SparkOfCode: include library only if needed
-#if ( defined(USE_ENCODER_VOLUME) || defined(USE_ENCODER_TUNE))
+#if (defined(USE_ENCODER_VOLUME) || defined(USE_ENCODER_TUNE))
 #include "AiEsp32RotaryEncoder.h"
 #define ROTARY_ENCODER_STEPS 4
 #endif
@@ -62,6 +62,15 @@ void IRAM_ATTR tune_readEncoderISR()
 }
 #endif
 
+// Pulse Check
+uint32_t countInterrupts = 0;
+uint32_t countLoops = 0;
+long currentTime = 0;
+long lastHeartbeat = 0;
+uint16_t pointerPosition = 50;
+uint16_t lastPointerPosition;
+;
+
 // SparkOfCode: Volume Potentiometer
 #ifdef USE_POT_VOLUME
 uint16_t volPotValue;
@@ -79,7 +88,7 @@ RetroGUI GUI;
 // STATIONS
 #include "Stations.h"
 uint8_t currentPage = 0;
-clTinyStations* stations[4]; // array of pointers - objects must be initialized later!
+clTinyStations *stations[4]; // array of pointers - objects must be initialized later!
 
 // AUDIO
 #include "Audio.h" //wolle aka schreibfaul1
@@ -125,6 +134,15 @@ uint32_t ms;
 
 lv_obj_t *tempLabel;
 LV_FONT_DECLARE(Berlin25_4);
+
+int intResultA;
+int intResultB;
+void IRAM_ATTR pulseCheck()
+{
+  countInterrupts++;
+  // intResultA = digitalRead(ENC_TUNE_A_PIN);
+  // intResultB = digitalRead(ENC_TUNE_B_PIN);
+}
 
 // ****************** PREFERENCES (FOR LAST STATION PLAYED && LAST VOLUME *******************************************
 void savePrefs()
@@ -210,8 +228,8 @@ String loadSettings() // ONLY FOR WEBSERVER-CONFIG
 
     if (payload != "")
     {
-      //stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
-      stations[currentPage]->loadFromJson(currentPage+1, &payload);
+      // stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
+      stations[currentPage]->loadFromJson(currentPage + 1, &payload);
       _num_stations = stations[currentPage]->arrStations.size();
 
       if (_lastStation > _num_stations - 1)
@@ -233,8 +251,8 @@ bool saveSettings(String payload)
 {
   // UPDATE GUI
 
-//  stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
-  stations[currentPage]->loadFromJson(currentPage+1, &payload);
+  //  stations[currentPage].loadFromJson(stations[currentPage].arrStations, currentPage, payload);
+  stations[currentPage]->loadFromJson(currentPage + 1, &payload);
   _num_stations = stations[currentPage]->arrStations.size();
 
   if (_lastStation > _num_stations - 1)
@@ -260,8 +278,8 @@ bool saveSettings(String payload)
     Serial.print("Update GUI (main:260) - currentPage: ");
     Serial.println(currentPage);
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-    typeArrStations* ptrArrStations;
-    //ptrArrStations = &stations[currentPage].arrStations; 
+    typeArrStations *ptrArrStations;
+    // ptrArrStations = &stations[currentPage].arrStations;
     GUI.setStations(&stations[currentPage]->arrStations);
     GUI.update(payload);
     GUI.tuneToStation(_lastStation);
@@ -395,69 +413,102 @@ const char NewCustomsStyle[] PROGMEM =
 
 // SparkOfCode: Encoder as state machine
 #ifdef USE_ENCODER_TUNE_SM
-int encoderChanged() // char used for 8-bit signed integer; -1: counter-clockwise; 0: no change; 1: clockwise
+
+uint16_t encoderValue = 200;
+uint16_t encoderValueOld = 200;
+bool blEncoderChanged = false;
+uint8_t encoderState = 0;
+
+bool encoderChanged()
 {
-  static uint8_t state = 0;
   bool CLKstate = digitalRead(ENC_TUNE_B_PIN);
   bool DTstate = digitalRead(ENC_TUNE_A_PIN);
-  switch (state)
+  switch (encoderState)
   {
   case 0: // Coming from idle state, encoder not turning
     if (!CLKstate)
     { // Turn clockwise: CLK goes low first
-      state = 1;
+      encoderState = 1;
     }
     else if (!DTstate)
     { // Turn anticlockwise: DT goes low first
-      state = 4;
-    }
-    return 0;
+      encoderState = 4;
+    };
+    return false;
   case 1: // Clockwise rotation phase 2
     if (!DTstate)
     { // Continue clockwise: DT will go low after CLK
-      state = 2;
-    }
-//    return 0;
+      encoderState = 2;
+    };
+    return false;
   case 2: // Clockwise rotation phase 3: turn further and CLK will go high first
     if (CLKstate)
     {
-      state = 3;
-    }
-    return 0;
+      encoderState = 3;
+    };
+    return false;
   case 3: // Clockwise rotation phase 4: both CLK and DT now high as the encoder completes one step clockwise
     if (CLKstate && DTstate)
     {
-      state = 0;
-      return 1;
-    }
-    return 0;
+      encoderState = 0;
+      encoderValue = encoderValue + TUNE_STEPS;
+      return true;
+    };
+    return false;
   case 4: // Anticlockwise: CLK and DT reversed
     if (!CLKstate)
     {
-      state = 5;
-    }
-    return 0;
+      encoderState = 5;
+    };
+    return false;
   case 5:
     if (DTstate)
     {
-      state = 6;
-    }
-    return 0;
+      encoderState = 6;
+    };
+    return false;
   case 6:
     if (CLKstate && DTstate)
     {
-      state = 0;
-      return -1;
-    }
-    return 0;
+      encoderState = 0;
+      encoderValue = encoderValue - TUNE_STEPS;
+      return true;
+    };
+    return false;
   };
-  return 0;
+  return false;
+}
+
+unsigned long lastEncInterrupt;
+unsigned long encInterrupt;
+unsigned long lastInterruptCount = 0;
+unsigned long interruptCount = 0;
+
+void IRAM_ATTR tuneEncoder_ISR_A()
+{
+  bool blNewChange;
+  // encInterrupt = micros();
+  blNewChange = encoderChanged();
+  blEncoderChanged = blEncoderChanged || blNewChange;
+  lastEncInterrupt = encInterrupt;
+  detachInterrupt(ENC_TUNE_A_PIN);
+  interruptCount++;
+}
+void IRAM_ATTR tuneEncoder_ISR_B()
+{
+  bool blNewChange;
+  // encInterrupt = micros();
+  blNewChange = encoderChanged();
+  blEncoderChanged = blEncoderChanged || blNewChange;
+  lastEncInterrupt = encInterrupt;
+  detachInterrupt(ENC_TUNE_B_PIN);
+  interruptCount++;
 }
 #endif
 
 void setup()
 {
-  
+
   // Debug console
   static const char *TAG = "SETUP";
 
@@ -470,11 +521,11 @@ void setup()
 
   LittleFS.begin(true, "/LittleFS");
 
-// initialize station objects
-for(int i=0; i<4; i++)
-{
-  stations[i] = new clTinyStations;
-};
+  // initialize station objects
+  for (int i = 0; i < 4; i++)
+  {
+    stations[i] = new clTinyStations;
+  };
 
   //**************************************************************************
   //                               LVGL
@@ -492,7 +543,7 @@ for(int i=0; i<4; i++)
   lv_obj_set_size(tempLabel, LV_SIZE_CONTENT, LV_SIZE_CONTENT); // 90% WIDTH OF PARENT
   lv_obj_align(tempLabel, LV_ALIGN_CENTER, 0, 0);               // CENTER ON PARENT
   lv_obj_set_style_text_color(tempLabel, lv_color_hex(0xffa500), LV_PART_MAIN);
-  lv_obj_set_style_text_font(tempLabel, &Berlin25_4, 0);        // CUSTOM FONT
+  lv_obj_set_style_text_font(tempLabel, &Berlin25_4, 0); // CUSTOM FONT
   lv_obj_set_style_text_align(tempLabel, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_clear_flag(tempLabel, LV_OBJ_FLAG_SCROLLABLE); // DON'T USE SCROLLBARS
   String ss = "Starting ..";
@@ -601,10 +652,10 @@ for(int i=0; i<4; i++)
 
   // STATIONS, COLORS ..
   String jsonSettings = loadJSON();
-  for(int i=0; i<4; i++)
+  for (int i = 0; i < 4; i++)
   {
-//    stations[i].loadFromJson(stations[i].arrStations, i+1, jsonSettings);
-    stations[i]->loadFromJson(i+1, &jsonSettings);
+    //    stations[i].loadFromJson(stations[i].arrStations, i+1, jsonSettings);
+    stations[i]->loadFromJson(i + 1, &jsonSettings);
   };
   _num_stations = stations[currentPage]->arrStations.size();
 
@@ -616,6 +667,7 @@ for(int i=0; i<4; i++)
   {
     _lastVolume = _maxVolume;
   }
+
   if (_lastVolume < 0)
   {
     _lastVolume = 0;
@@ -634,7 +686,7 @@ for(int i=0; i<4; i++)
   }
 
   // last page
-    if (currentPage < 0)
+  if (currentPage < 0)
   {
     currentPage = 0;
   }
@@ -652,7 +704,7 @@ for(int i=0; i<4; i++)
   GUI.swapPage(currentPage, _lastStation, stations[currentPage]->getArrStations());
   GUI.update(jsonSettings);
   xSemaphoreGiveRecursive(lvgl_mux);
-  
+
   //**************************************************************************
   //                               AUDIO
   //**************************************************************************
@@ -685,23 +737,30 @@ for(int i=0; i<4; i++)
   // we must initialize rotary encoder
   tuneEncoder.begin();
   tuneEncoder.setup(tune_readEncoderISR);
+  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
   // set boundaries and if values should cycle or not
   bool circleValues_tune = false;
   tuneEncoder.setBoundaries(0, TFT_HOR_RES - POINTER_WIDTH * 1.5, circleValues_tune); // minValue, maxValue, circleValues true|false (when max go to min and vice versa)
-  // tuneEncoder.disableAcceleration();
+                                                                                      // tuneEncoder.disableAcceleration();
+  tuneEncoder.setAcceleration(150);
   tuneEncoder.setEncoderValue(GUI.getStationMidX(_lastStation));
 #endif
 
-  // SparkOfCode: Tune encoder pins for encoders with or without pullup resistors
-  #ifdef USE_ENCODER_TUNE_SM // Tune encoder implemented as state machine
-    #ifdef USE_ENC_TUNE_INTERNAL_PULLUP
-      pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
-      pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
-    #else
-      pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
-      pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
-    #endif
-  #endif
+// SparkOfCode: Tune encoder pins for encoders with or without pullup resistors
+#ifdef USE_ENCODER_TUNE_SM // Tune encoder implemented as state machine
+#ifdef USE_ENC_TUNE_INTERNAL_PULLUP
+  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
+#else
+  pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
+  pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
+#endif
+//  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), tuneEncoder_ISR_A, CHANGE);
+//  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_B_PIN), tuneEncoder_ISR_B, CHANGE);
+#endif
+  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
 
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.tuneToStation(_lastStation);
@@ -709,6 +768,9 @@ for(int i=0; i<4; i++)
   audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
 
   createVU_Task();
+
+  // Pulse Check
+  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), pulseCheck, CHANGE);
 }
 
 #ifdef USE_ENCODER_VOLUME
@@ -733,13 +795,17 @@ void rotary_volume_loop()
 #endif
 
 #ifdef USE_ENCODER_TUNE
-// EXPERIEMANTAL !!
+// EXPERIMENTAL !!
 void rotary_tune_loop()
 {
   // dont do anything unless value changed
   if (tuneEncoder.encoderChanged())
   {
+    Serial.println("Encoder changed");
     uint32_t v = tuneEncoder.readEncoder();
+    Serial.print("Encoder changed: ");
+    Serial.println(v);
+
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     GUI.setTuneIndicator(v);
     xSemaphoreGiveRecursive(lvgl_mux);
@@ -750,7 +816,8 @@ void rotary_tune_loop()
       { // NEW STATION
         LV_LOG_USER("NEW STATION !!!");
         _lastStation = idx;
-        audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+        //        audioConnecttohost(tinyStations[_lastStation].URL.c_str());
+        audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
         audioSetVolume(_lastVolume);
         savePrefs();
         _isPaused = false;
@@ -775,7 +842,7 @@ void rotary_tune_loop()
       // if(!_isPaused) {_isPaused = audioPauseResume(); }
       //  _isPaused = audioPauseResume();
       xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-      GUI.setStationPlaying("", false); // DONN'T STORE
+      GUI.setStationPlaying("", false); // DON'T STORE
       GUI.setTitlePlaying("", false);
       xSemaphoreGiveRecursive(lvgl_mux);
       audioSetVolume(0); // MUTE
@@ -784,6 +851,91 @@ void rotary_tune_loop()
   }
   // handle_rotary_button();
 }
+#endif
+
+#ifdef USE_ENCODER_TUNE_SM
+
+void rotary_tune_loop()
+{
+  static uint32_t loopCounter = 0;
+  loopCounter++;
+  blEncoderChanged = encoderChanged();
+  // dont do anything unless value changed
+  // if (encoderValue != encoderValueOld)
+  if (blEncoderChanged)
+  {
+    Serial.print("Encoder changed from ");
+    Serial.print(encoderValueOld);
+    Serial.print(" to ");
+    Serial.print(encoderValue);
+    Serial.print(" loop counter: ");
+    Serial.println(loopCounter);
+
+    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+    GUI.setTuneIndicator(encoderValue);
+    xSemaphoreGiveRecursive(lvgl_mux);
+    /*int8_t idx = GUI.getStationIndexUnderIndicator(encoderValue);
+    if (idx >= 0)
+    {
+      if (idx != _lastStation)
+      { // NEW STATION
+        LV_LOG_USER("NEW STATION !!!");
+        _lastStation = idx;
+        audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
+        audioSetVolume(_lastVolume);
+        savePrefs();
+        _isPaused = false;
+      }
+      else
+      { // SAME STATION(AGAIN)
+        LV_LOG_USER(" * SAME STATION *");
+        xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+        GUI.setStationPlaying(GUI.last_station.c_str());
+        GUI.setTitlePlaying(GUI.last_title.c_str());
+        xSemaphoreGiveRecursive(lvgl_mux);
+        audioSetVolume(_lastVolume);
+        savePrefs();
+        _isPaused = false;
+
+        //  if(_isPaused) {_isPaused = audioPauseResume(); }
+      }
+    }
+    else
+    { // NO STATION
+      LV_LOG_USER("** NO STATION **");
+      // if(!_isPaused) {_isPaused = audioPauseResume(); }
+      //  _isPaused = audioPauseResume();
+      xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+      GUI.setStationPlaying("", false); // DON'T STORE
+      GUI.setTitlePlaying("", false);
+      xSemaphoreGiveRecursive(lvgl_mux);
+      audioSetVolume(0); // MUTE
+      _isPaused = true;
+    }*/
+    encoderValueOld = encoderValue;
+  };
+  // encoderValueOld = encoderValue;
+  encInterrupt = micros();
+  if ((encInterrupt - lastEncInterrupt) > 3000)
+  {
+    //    attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), tuneEncoder_ISR_A, CHANGE);
+    //    attachInterrupt(digitalPinToInterrupt(ENC_TUNE_B_PIN), tuneEncoder_ISR_B, CHANGE);
+  };
+  if (blEncoderChanged)
+  {
+    blEncoderChanged = false;
+  };
+  if (interruptCount != lastInterruptCount)
+  {
+    Serial.print("interruptCount: ");
+    Serial.print(interruptCount);
+    // Serial.println(encoderValue);
+    Serial.print(" | encoderState: ");
+    Serial.println(encoderState);
+    lastInterruptCount = interruptCount;
+  };
+  // handle_rotary_button();
+};
 #endif
 
 // SparkOfCode: set volume with potentiometer
@@ -831,30 +983,57 @@ void loop()
     rotary_volume_loop();
 #endif
 
-#ifdef USE_ENCODER_TUNE
+#if (defined USE_ENCODER_TUNE | defined USE_ENCODER_TUNE_SM)
     rotary_tune_loop();
 #endif
 
 // SparkOfCode TUNE_ENCODER_SM
-#ifdef USE_ENCODER_TUNE_SM
-    int charEncoderChanged;
-    charEncoderChanged = encoderChanged();
-    if (charEncoderChanged == 1) // clockwise
+/*#ifdef USE_ENCODER_TUNE_SM
+    //charEncoderChanged = encoderChanged();
+    if (blEncoderChanged) //
     {
-      gui_station_next();
+      Serial.print("Encoder changed: ");
+      Serial.println(encoderValue);
+      //gui_station_next();
+      blEncoderChanged = false;
     }
-    if (charEncoderChanged == -1) // counter-clockwise
-    {
-      gui_station_prev();
-    }
-#endif
+#endif*/
 
 // SparkOfCode: Volume Potentiometer
 #ifdef USE_POT_VOLUME
-    pot_volume_loop();
+    // pot_volume_loop();
 #endif
   }
 
+  // Pulse Check
+  currentTime = micros();
+  if (currentTime - lastHeartbeat >= 1000000)
+  {
+    lastHeartbeat = currentTime;
+    Serial.print("Loops: ");
+    Serial.print(countLoops);
+    Serial.print(" Interrupts: ");
+    Serial.println(countInterrupts);
+    countLoops = 0;
+    countInterrupts = 0;
+  }
+  countLoops++;
+
+  // test with tune pointer
+  pointerPosition = (countInterrupts / 5) % 480;
+  if (pointerPosition != lastPointerPosition)
+  {
+    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+    GUI.setTuneIndicator(pointerPosition);
+    xSemaphoreGiveRecursive(lvgl_mux);
+    lastPointerPosition = pointerPosition;
+  };
+
+  // pointerPosition++;
+  // if(pointerPosition > 430)
+  //{
+  //   pointerPosition = 20;
+  // };
 }
 
 // ************** WIFI_MANAGER CALLBACKS *************************************
@@ -961,13 +1140,12 @@ void gui_station_prev()
 void gui_setPage(int Page)
 {
   Serial.println(Page);
-  currentPage = Page-1; // Page 1..4 is array index 0..3
+  currentPage = Page - 1; // Page 1..4 is array index 0..3
   _lastStation = stations[currentPage]->lastStation;
-  //Serial.println(_lastStation);
+  // Serial.println(_lastStation);
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.swapPage(currentPage, _lastStation, stations[currentPage]->getArrStations());
   xSemaphoreGiveRecursive(lvgl_mux);
   audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
   savePrefs();
-
 };
