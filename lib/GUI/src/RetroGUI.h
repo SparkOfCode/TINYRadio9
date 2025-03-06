@@ -26,7 +26,10 @@ extern __attribute__((weak)) void gui_volume_down();
 extern __attribute__((weak)) void gui_station_next();
 extern __attribute__((weak)) void gui_station_prev();
 
+extern __attribute__((weak)) void gui_page_next();
+extern __attribute__((weak)) void gui_page_prev();
 extern __attribute__((weak)) void gui_setPage(int Page);
+//extern __attribute__((weak)) void gui_scrollPanel(int Page);
 
 // static Stations tinyStations;
 // TinyStations stations(tinyStations);
@@ -82,7 +85,7 @@ public:
         lv_obj_set_size(cont, TFT_HOR_RES, TFT_VER_RES);
         lv_obj_center(cont);
         lv_obj_add_style(cont, &cont_style, 0);
-        lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_remove_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
 
         // TOP_LINE
         lv_obj_t *topLine = lv_line_create(_parent);
@@ -122,20 +125,53 @@ public:
         em11_set_minMax(em11, 0, 127);
 #endif
 
+//********* Experimental *************
+    panel = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(panel, 480, 192);
+    lv_obj_add_style(panel, &panel_style, 0);
+    lv_obj_set_x(panel, 0);
+    lv_obj_set_y(panel, 58);
+    lv_obj_set_scrollbar_mode(panel, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scroll_snap_x(panel, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_ROW);
+    //lv_obj_align(panel, LV_ALIGN_CENTER, 0, 20);
+ 
         // TOP - RIGHT
         tr = createPart(cont, false);
         lv_obj_set_grid_cell(tr, LV_GRID_ALIGN_STRETCH, 1, 1,
                              LV_GRID_ALIGN_STRETCH, 0, 1);
 
         // MIDDLE
-        mid = createPart(cont, true);
-        lv_obj_set_grid_cell(mid, LV_GRID_ALIGN_STRETCH, 0, 2,
-                             LV_GRID_ALIGN_STRETCH, 1, 1);
-        // ONLY TOP BORDER
+        mid = createPart(panel, true);
+        lv_obj_set_size(mid, TFT_HOR_RES, 192);
         lv_obj_set_style_border_side(mid, LV_BORDER_SIDE_TOP, 0);
-
-        // STATION-LIST
+        lv_obj_add_flag(mid, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_all(mid, 0, 0);
         createStationList(mid);
+
+        // MIDDLE 2
+        mid2 = createPart(panel, true);
+        lv_obj_set_size(mid2, TFT_HOR_RES, 192);
+        lv_obj_set_style_border_side(mid2, LV_BORDER_SIDE_TOP, 0);
+        lv_obj_add_flag(mid2, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_all(mid2, 0, 0);
+        createStationList(mid2);
+
+        // MIDDLE 3
+        mid3 = createPart(panel, true);
+        lv_obj_set_size(mid3, TFT_HOR_RES, 192);
+        lv_obj_set_style_border_side(mid3, LV_BORDER_SIDE_TOP, 0);
+        lv_obj_add_flag(mid3, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_all(mid3, 0, 0);
+        createStationList(mid3);
+
+        // MIDDLE 4
+        mid4 = createPart(panel, true);
+        lv_obj_set_size(mid4, TFT_HOR_RES, 192);
+        lv_obj_set_style_border_side(mid4, LV_BORDER_SIDE_TOP, 0);
+        lv_obj_add_flag(mid4, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_all(mid4, 0, 0);
+        createStationList(mid4);
 
         // BOTTOM
         bot_upper = createPart(cont, true);
@@ -147,7 +183,6 @@ public:
         scale_bot = createVolumeScale(bot_upper, &Berlin10_4, 0, VOLUME_STEPS);
 
 #ifdef NO_BUTTONS
-
         bot_lower = createPart(cont, false);
         lv_obj_set_grid_cell(bot_lower, LV_GRID_ALIGN_STRETCH, 0, 2,
                              LV_GRID_ALIGN_STRETCH, 3, 1);
@@ -203,7 +238,8 @@ public:
 
         lv_label_set_long_mode(title_playing, LV_LABEL_LONG_SCROLL_CIRCULAR);
         lv_label_set_text(title_playing, last_title.c_str());
-    }
+ 
+     }
 
     void begin(lv_obj_t *parent, String json)
     {
@@ -371,6 +407,12 @@ public:
 
     void setTuneIndicator(uint32_t newPosition)
     {
+        //Serial.println(newPosition);
+        /*if(newPosition>480)
+        {
+          gui_nextPage();
+          newPosition = 1;
+        }*/
         lv_obj_set_x(station_indicator, newPosition - POINTER_WIDTH / 2);
     }
 
@@ -445,15 +487,41 @@ public:
         return _stations[stationIndex].midX;
     }
 
+void panelScroll(int Page)
+ {
+    Serial.print("panelScroll: Page ");
+    Serial.println(Page);
+    if(Page == 1)
+    {
+      lv_obj_set_parent(station_indicator, mid);
+    };
+     if(Page == 2)
+    {
+      lv_obj_set_parent(station_indicator, mid2);
+    };
+    if(Page == 3)
+    {
+      lv_obj_set_parent(station_indicator, mid3);
+    };
+     if(Page == 4)
+    {
+      lv_obj_set_parent(station_indicator, mid4);
+    };
+    lv_obj_scroll_to_x(panel, 480*(Page-1), LV_ANIM_OFF);
+    //lv_obj_set_x(station_indicator, 0);
+}
+
     void swapPage(uint8_t Page, uint8_t station, typeArrStations* arrStations)
     {
-        lv_obj_clean(mid);
+        /*lv_obj_clean(mid);
         setPage(&Page);
         setStations(arrStations);
         createStationList(mid);
         station_indicator = createStationIndicator(mid);
-        tuneToStation(station);
+        tuneToStation(station);*/
     }
+
+
 
 /************************************************************
 /******************* private ********************************
@@ -473,11 +541,17 @@ private:
     uint32_t _volume_width;
 
     lv_obj_t *cont;              // CONTAINER
+    lv_obj_t *cont_mid;              // CONTAINER for station list
     lv_obj_t *station_indicator; // SKALENZEIGER
     lv_obj_t *volume_indicator;  // VOLUME
     lv_obj_t *tl;                // TOP LEFT
     lv_obj_t *tr;                // TOP RIGHT
+    lv_obj_t * mid_parent; //MIDDLE parent object (for scroll)
+    lv_obj_t * panel;
     lv_obj_t * mid; //MIDDLE
+    lv_obj_t * mid2; //MIDDLE 2
+    lv_obj_t * mid3; //MIDDLE 2
+    lv_obj_t * mid4; //MIDDLE 2
     lv_obj_t *bot_upper; // BOTTOM
     lv_obj_t *bot_lower; // BOTTOM
     lv_obj_t *stationList;
@@ -499,6 +573,7 @@ private:
     lv_obj_t *needle;
 
     // STYLES
+    lv_style_t panel_style;
     lv_style_t cont_style;
     lv_style_t tuning_style;
     lv_style_t volume_style;
@@ -534,6 +609,14 @@ private:
 
     void createStyles()
     {
+        // Panel (SparkOfCode)
+        lv_style_init(&panel_style);
+        lv_style_set_bg_color(&panel_style, lv_color_hex(_colorBackground));
+        lv_style_set_border_width(&panel_style, 0);
+        lv_style_set_border_color(&panel_style, lv_color_hex(0x0));
+        lv_style_set_pad_all(&panel_style, 0);
+        lv_style_set_pad_gap(&panel_style, 0);
+
         // CONTAINER
         lv_style_init(&cont_style);
         lv_style_set_radius(&cont_style, 0);
@@ -543,6 +626,7 @@ private:
         lv_style_set_bg_opa(&cont_style, LV_OPA_COVER);
         lv_style_set_pad_all(&cont_style, 2);
         lv_style_set_pad_gap(&cont_style, 3);
+    
 
         // ZEIGER
         lv_style_init(&tuning_style);
@@ -1076,10 +1160,11 @@ private:
             else if (btn == BUTTON2_TEXT)
             {
                 // LV_LOG_USER("VOLUME++");
-                if (gui_setPage)
-                {
+                //if (gui_setPage)
+                //{
                     gui_setPage(2);
-                }
+                //}
+//                lv_obj_scroll_by(panel, 480, 0, LV_ANIM_ON) // or LV_ANIM_OFF
             }
             else if (btn == BUTTON3_TEXT)
             {

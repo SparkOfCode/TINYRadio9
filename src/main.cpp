@@ -75,6 +75,7 @@ uint16_t lastPointerPosition;
 #ifdef USE_POT_VOLUME
 uint16_t volPotValue;
 uint16_t volPotValueNew;
+long lastPotVolumeSample;
 #endif
 
 // GUI
@@ -281,7 +282,7 @@ bool saveSettings(String payload)
     typeArrStations *ptrArrStations;
     // ptrArrStations = &stations[currentPage].arrStations;
     GUI.setStations(&stations[currentPage]->arrStations);
-    GUI.update(payload);
+    //GUI.update(payload);
     GUI.tuneToStation(_lastStation);
     GUI.setVolumeIndicator(_lastVolume);
     GUI.updateDRDindicator(_drdStopped);
@@ -411,6 +412,11 @@ const char NewCustomsStyle[] PROGMEM =
     "button{background-color:blue;color:white;line-height:2.4rem;font-size:1.2rem;width:100%;}fieldset{border-radius:0.3rem;margin:0px;}</style>";
 #endif
 
+// Timer interrupt
+static const uint16_t timer_divider = 80;
+static const uint64_t timer_max_count = 1000000;
+static hw_timer_t *myTimer = NULL;
+
 // SparkOfCode: Encoder as state machine
 #ifdef USE_ENCODER_TUNE_SM
 
@@ -471,7 +477,10 @@ bool encoderChanged()
     if (CLKstate && DTstate)
     {
       encoderState = 0;
-      encoderValue = encoderValue - TUNE_STEPS;
+      if(encoderValue >= TUNE_STEPS)
+      {
+        encoderValue = encoderValue - TUNE_STEPS;
+      };
       return true;
     };
     return false;
@@ -484,30 +493,30 @@ unsigned long encInterrupt;
 unsigned long lastInterruptCount = 0;
 unsigned long interruptCount = 0;
 
-void IRAM_ATTR tuneEncoder_ISR_A()
+void IRAM_ATTR tuneEncoder_ISR()
 {
-  bool blNewChange;
-  // encInterrupt = micros();
-  blNewChange = encoderChanged();
-  blEncoderChanged = blEncoderChanged || blNewChange;
-  lastEncInterrupt = encInterrupt;
-  detachInterrupt(ENC_TUNE_A_PIN);
-  interruptCount++;
-}
-void IRAM_ATTR tuneEncoder_ISR_B()
-{
-  bool blNewChange;
-  // encInterrupt = micros();
-  blNewChange = encoderChanged();
-  blEncoderChanged = blEncoderChanged || blNewChange;
-  lastEncInterrupt = encInterrupt;
-  detachInterrupt(ENC_TUNE_B_PIN);
+  blEncoderChanged = false;
+  blEncoderChanged = encoderChanged();
   interruptCount++;
 }
 #endif
 
+uint16_t lastEncValue;
+bool timerInterruptTriggered = false;
+uint16_t encSpeed;
+uint16_t averageEncSpeed;
+void IRAM_ATTR onTimer()
+{
+  encSpeed = abs((encoderValue-lastEncValue) * 100); // Unit: steps/s
+  lastEncValue = encoderValue;
+  averageEncSpeed = max((uint16_t)((averageEncSpeed * 19 + encSpeed) / 20), encSpeed);
+  timerInterruptTriggered = true;
+
+}
+
 void setup()
 {
+
 
   // Debug console
   static const char *TAG = "SETUP";
@@ -520,6 +529,14 @@ void setup()
   esp_log_level_set("*", ESP_LOG_VERBOSE);
 
   LittleFS.begin(true, "/LittleFS");
+
+  // Timer interrupt
+  
+  // Create and start timer (num, divider, countUp)
+  myTimer = timerBegin(1000); // Timer frequency [Hz]
+  timerAttachInterrupt(myTimer, &onTimer);
+  // At what count should ISR trigger
+  timerAlarm(myTimer, 10, true, 0); // 10 ms = 100 Hz
 
   // initialize station objects
   for (int i = 0; i < 4; i++)
@@ -756,11 +773,11 @@ void setup()
   pinMode(ENC_TUNE_A_PIN, INPUT); // use for encoder (module) with pullups
   pinMode(ENC_TUNE_B_PIN, INPUT); // use for encoder (module) with pullups
 #endif
-//  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), tuneEncoder_ISR_A, CHANGE);
-//  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_B_PIN), tuneEncoder_ISR_B, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), tuneEncoder_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_B_PIN), tuneEncoder_ISR, CHANGE);
 #endif
-  pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
-  pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
+  // pinMode(ENC_TUNE_A_PIN, INPUT_PULLUP); // use for encoder without pullups
+  // pinMode(ENC_TUNE_B_PIN, INPUT_PULLUP); // use for encoder without pullups
 
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.tuneToStation(_lastStation);
@@ -770,7 +787,7 @@ void setup()
   createVU_Task();
 
   // Pulse Check
-  attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), pulseCheck, CHANGE);
+  // attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), pulseCheck, CHANGE);
 }
 
 #ifdef USE_ENCODER_VOLUME
@@ -858,51 +875,45 @@ void rotary_tune_loop()
 void rotary_tune_loop()
 {
   static uint32_t loopCounter = 0;
-  loopCounter++;
-  blEncoderChanged = encoderChanged();
-  // dont do anything unless value changed
-  // if (encoderValue != encoderValueOld)
-  if (blEncoderChanged)
-  {
-    Serial.print("Encoder changed from ");
-    Serial.print(encoderValueOld);
-    Serial.print(" to ");
-    Serial.print(encoderValue);
-    Serial.print(" loop counter: ");
-    Serial.println(loopCounter);
+  uint32_t deltaEncValue;
+  static uint16_t lastEncValue;
+  static long lastEncChange;
+  int speed;
+  static int averageSpeed;
 
+  loopCounter++;
+  //  blEncoderChanged = encoderChanged(); // already set
+  // dont do anything unless value changed
+
+  if (blEncoderChanged || averageEncSpeed > 0)
+  {
     xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+    if(encoderValue >= 480)
+    {
+      gui_page_next();
+      encoderValue = 0;
+    }
+    else if(encoderValue == 0)
+    {
+      gui_page_prev();
+      encoderValue = 480;
+    }
     GUI.setTuneIndicator(encoderValue);
     xSemaphoreGiveRecursive(lvgl_mux);
-    /*int8_t idx = GUI.getStationIndexUnderIndicator(encoderValue);
-    if (idx >= 0)
-    {
-      if (idx != _lastStation)
-      { // NEW STATION
-        LV_LOG_USER("NEW STATION !!!");
-        _lastStation = idx;
-        audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
-        audioSetVolume(_lastVolume);
-        savePrefs();
-        _isPaused = false;
-      }
-      else
-      { // SAME STATION(AGAIN)
-        LV_LOG_USER(" * SAME STATION *");
-        xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-        GUI.setStationPlaying(GUI.last_station.c_str());
-        GUI.setTitlePlaying(GUI.last_title.c_str());
-        xSemaphoreGiveRecursive(lvgl_mux);
-        audioSetVolume(_lastVolume);
-        savePrefs();
-        _isPaused = false;
 
-        //  if(_isPaused) {_isPaused = audioPauseResume(); }
-      }
-    }
-    else
+    // search station only if movement is slow
+
+    //lastEncChange = currentTime;
+    //lastEncValue = encoderValue;
+    /*Serial.print("encSpeed: ");
+    Serial.print(encSpeed);
+    Serial.print(" Average Speed: ");
+    Serial.println(averageEncSpeed);*/
+
+    int8_t idx = GUI.getStationIndexUnderIndicator(encoderValue);
+    if (idx < 0)
     { // NO STATION
-      LV_LOG_USER("** NO STATION **");
+      //LV_LOG_USER("** NO STATION **");
       // if(!_isPaused) {_isPaused = audioPauseResume(); }
       //  _isPaused = audioPauseResume();
       xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
@@ -911,29 +922,38 @@ void rotary_tune_loop()
       xSemaphoreGiveRecursive(lvgl_mux);
       audioSetVolume(0); // MUTE
       _isPaused = true;
-    }*/
+    }
+    else
+    {
+      if (averageEncSpeed < 10) 
+      {
+        if (idx != _lastStation)
+        { // NEW STATION
+          LV_LOG_USER("NEW STATION !!!");
+          _lastStation = idx;
+          audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
+          audioSetVolume(_lastVolume);
+          savePrefs();
+          _isPaused = false;
+        }
+        else
+        { // SAME STATION(AGAIN)
+          LV_LOG_USER(" * SAME STATION *");
+          xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+          GUI.setStationPlaying(GUI.last_station.c_str());
+          GUI.setTitlePlaying(GUI.last_title.c_str());
+          xSemaphoreGiveRecursive(lvgl_mux);
+          audioSetVolume(_lastVolume);
+          savePrefs();
+          _isPaused = false;
+
+          //  if(_isPaused) {_isPaused = audioPauseResume(); }
+        }
+      };
+    };
     encoderValueOld = encoderValue;
   };
-  // encoderValueOld = encoderValue;
-  encInterrupt = micros();
-  if ((encInterrupt - lastEncInterrupt) > 3000)
-  {
-    //    attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), tuneEncoder_ISR_A, CHANGE);
-    //    attachInterrupt(digitalPinToInterrupt(ENC_TUNE_B_PIN), tuneEncoder_ISR_B, CHANGE);
-  };
-  if (blEncoderChanged)
-  {
-    blEncoderChanged = false;
-  };
-  if (interruptCount != lastInterruptCount)
-  {
-    Serial.print("interruptCount: ");
-    Serial.print(interruptCount);
-    // Serial.println(encoderValue);
-    Serial.print(" | encoderState: ");
-    Serial.println(encoderState);
-    lastInterruptCount = interruptCount;
-  };
+  blEncoderChanged = false;
   // handle_rotary_button();
 };
 #endif
@@ -976,34 +996,26 @@ void loop()
 
   if (audioIsRunning)
   {
-
     _vum = audioGetVUlevel();
+  }
 
 #ifdef USE_ENCODER_VOLUME
-    rotary_volume_loop();
+  rotary_volume_loop();
 #endif
 
 #if (defined USE_ENCODER_TUNE | defined USE_ENCODER_TUNE_SM)
-    rotary_tune_loop();
+  rotary_tune_loop();
 #endif
-
-// SparkOfCode TUNE_ENCODER_SM
-/*#ifdef USE_ENCODER_TUNE_SM
-    //charEncoderChanged = encoderChanged();
-    if (blEncoderChanged) //
-    {
-      Serial.print("Encoder changed: ");
-      Serial.println(encoderValue);
-      //gui_station_next();
-      blEncoderChanged = false;
-    }
-#endif*/
 
 // SparkOfCode: Volume Potentiometer
 #ifdef USE_POT_VOLUME
-    // pot_volume_loop();
-#endif
+  currentTime = micros();
+  if ((currentTime - lastPotVolumeSample) > 1000) // ADC is slow - once every ms is enough
+  {
+    pot_volume_loop();
+    lastPotVolumeSample = currentTime;
   }
+#endif
 
   // Pulse Check
   currentTime = micros();
@@ -1013,27 +1025,13 @@ void loop()
     Serial.print("Loops: ");
     Serial.print(countLoops);
     Serial.print(" Interrupts: ");
-    Serial.println(countInterrupts);
+    Serial.print(interruptCount);
+    Serial.print(" Encoder Speed: ");
+    Serial.println(encSpeed);
     countLoops = 0;
-    countInterrupts = 0;
+    interruptCount = 0;
   }
   countLoops++;
-
-  // test with tune pointer
-  pointerPosition = (countInterrupts / 5) % 480;
-  if (pointerPosition != lastPointerPosition)
-  {
-    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-    GUI.setTuneIndicator(pointerPosition);
-    xSemaphoreGiveRecursive(lvgl_mux);
-    lastPointerPosition = pointerPosition;
-  };
-
-  // pointerPosition++;
-  // if(pointerPosition > 430)
-  //{
-  //   pointerPosition = 20;
-  // };
 }
 
 // ************** WIFI_MANAGER CALLBACKS *************************************
@@ -1137,14 +1135,38 @@ void gui_station_prev()
   }
 }
 
+void gui_page_next()
+{
+  if(currentPage != 3)
+  {
+    currentPage++;
+    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+    GUI.panelScroll(currentPage+1);
+    xSemaphoreGiveRecursive(lvgl_mux);
+  };
+};
+
+void gui_page_prev()
+{
+  if (currentPage != 0)
+  {
+    currentPage--;
+    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
+    GUI.panelScroll(currentPage-1);
+    xSemaphoreGiveRecursive(lvgl_mux);
+  };
+};
+
 void gui_setPage(int Page)
 {
+  Serial.print("Page: ");
   Serial.println(Page);
   currentPage = Page - 1; // Page 1..4 is array index 0..3
   _lastStation = stations[currentPage]->lastStation;
   // Serial.println(_lastStation);
   xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
   GUI.swapPage(currentPage, _lastStation, stations[currentPage]->getArrStations());
+  GUI.panelScroll(Page);
   xSemaphoreGiveRecursive(lvgl_mux);
   audioConnecttohost(stations[currentPage]->arrStations[_lastStation].URL.c_str());
   savePrefs();

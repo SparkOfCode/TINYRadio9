@@ -24,13 +24,13 @@
 
 //SparkOfCode
 //Uncomment to use encoder for volume implemented as state machine
-//#define USE_ENCODER_TUNE_SM
+#define USE_ENCODER_TUNE_SM
 //Uncomment if your encoder has no pullup resistors and you need the internal GPIO pullups of ESP32
-//#define USE_ENC_TUNE_INTERNAL_PULLUP
+#define USE_ENC_TUNE_INTERNAL_PULLUP
 
 //SparkOfCode
 //Uncomment next line if you want to use a potentiometer on ADC for volume control
-//#define USE_POT_VOLUME
+#define USE_POT_VOLUME
 
 //SparkOfCode
 //Uncomment next line if you want to have 4 pages with different stations (select page via button)
@@ -89,7 +89,7 @@
 #ifdef USE_PAGES
 //  static const char * btnm_map[] = {LV_SYMBOL_VOLUME_MID, LV_SYMBOL_PREV, LV_SYMBOL_NEXT, LV_SYMBOL_VOLUME_MAX ,""};
   static const char *btnm_map[5] = {BUTTON1_TEXT, BUTTON2_TEXT, BUTTON3_TEXT, BUTTON4_TEXT,""};
-  #define TUNE_STEPS    4
+  #define TUNE_STEPS    1
 #endif
 
 //ONLY TUNE ENCODER
