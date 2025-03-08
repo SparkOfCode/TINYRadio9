@@ -29,10 +29,12 @@ bool _drdStopped = false;
 
 // SOME DEFINES
 #include "tinyDefs.h"
+//#include "WT32_SC01_PLUS.h"
 
 // LVGL
-#define WT_USE_LVGL
-#include "WT32_SC01_PLUS.h"
+//#define WT_USE_LVGL
+
+#include "RetroGUI.h"
 
 SemaphoreHandle_t lvgl_mux;
 
@@ -80,7 +82,7 @@ long lastPotVolumeSample;
 
 // GUI
 
-#include "RetroGUI.h"
+
 RetroGUI GUI;
 
 // #include "SimpleGUI.h"
@@ -522,9 +524,11 @@ void setup()
   static const char *TAG = "SETUP";
 
   Serial.begin(115200);
-  // delay(3000);                  //NEEDED BECAUSE OF USB-C
+   delay(3000);                  //NEEDED BECAUSE OF USB-C
   // Serial.setDebugOutput(true);
   // Serial.flush();
+
+heap_caps_print_heap_info(MALLOC_CAP_DMA);
 
   esp_log_level_set("*", ESP_LOG_VERBOSE);
 
@@ -788,6 +792,7 @@ void setup()
 
   // Pulse Check
   // attachInterrupt(digitalPinToInterrupt(ENC_TUNE_A_PIN), pulseCheck, CHANGE);
+heap_caps_print_heap_info(MALLOC_CAP_DMA);
 }
 
 #ifdef USE_ENCODER_VOLUME

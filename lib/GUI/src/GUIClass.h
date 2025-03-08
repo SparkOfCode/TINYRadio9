@@ -53,9 +53,9 @@ private:
     };
 
     //"NOW PLAYING"
-    virtual void setStationPlaying(const char *station, bool store) {
+    virtual void setStationPlaying(const char *station, bool store = true) {
     };
-    virtual void setTitlePlaying(const char *title, bool store) {
+    virtual void setTitlePlaying(const char *title, bool store = true) {
     };
 
     // INDICATORS
