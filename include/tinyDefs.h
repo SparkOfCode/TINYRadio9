@@ -6,9 +6,7 @@
   by DrNeurosurg 2024
 
 *****************************************************************************************************************************/
- 
-#ifndef _TINY_DEFS_H_
-#define _TINY_DEFS_H_
+#pragma once
 
 #include <lvgl.h>
 
@@ -150,6 +148,3 @@
   #define LABEL_WIDTH 6 * X_INC
   #define MARKER_HEIGHT 6
   #define MARKER_WIDTH X_INC
-
-
-#endif //_TINY_DEFS_H_

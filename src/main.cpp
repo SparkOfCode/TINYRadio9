@@ -519,7 +519,6 @@ void IRAM_ATTR onTimer()
 void setup()
 {
 
-
   // Debug console
   static const char *TAG = "SETUP";
 
@@ -1032,7 +1031,9 @@ void loop()
     Serial.print(" Interrupts: ");
     Serial.print(interruptCount);
     Serial.print(" Encoder Speed: ");
-    Serial.println(encSpeed);
+    Serial.print(encSpeed);
+    Serial.print(" Heap: ");
+    Serial.println(heap_caps_get_free_size(MALLOC_CAP_DMA));
     countLoops = 0;
     interruptCount = 0;
   }

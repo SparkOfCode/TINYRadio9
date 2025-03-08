@@ -35,9 +35,6 @@ Upload Speed: "921600"
 USB Mode: "Hardware CDC and JTAG"
 
 *********************************************** */
-#ifndef WT32_SC01_PLUS_H
-#define WT32_SC01_PLUS_H
-
 #pragma once
 
 #include <Arduino.h>
@@ -115,5 +112,3 @@ uint8_t *lvBuffer2 = (uint8_t *)heap_caps_malloc(lvBufferSize, MALLOC_CAP_INTERN
 #endif // WT_USE_LVGL
 
 void init_display();
-
-#endif
