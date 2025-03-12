@@ -513,7 +513,6 @@ void IRAM_ATTR onTimer()
   lastEncValue = encoderValue;
   averageEncSpeed = max((uint16_t)((averageEncSpeed * 19 + encSpeed) / 20), encSpeed);
   timerInterruptTriggered = true;
-
 }
 
 void setup()
@@ -878,42 +877,21 @@ void rotary_tune_loop()
 
 void rotary_tune_loop()
 {
-  static uint32_t loopCounter = 0;
-  uint32_t deltaEncValue;
+  //uint32_t deltaEncValue;
   static uint16_t lastEncValue;
-  static long lastEncChange;
-  int speed;
-  static int averageSpeed;
+  //static long lastEncChange;
+  //int speed;
+  //static int averageSpeed;
 
-  loopCounter++;
-  //  blEncoderChanged = encoderChanged(); // already set
-  // dont do anything unless value changed
-
-  if (blEncoderChanged || averageEncSpeed > 0)
+  if (blEncoderChanged) // new position
   {
-    xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
-    if(encoderValue >= 480)
-    {
-      gui_page_next();
-      encoderValue = 0;
-    }
-    else if(encoderValue == 0)
-    {
-      gui_page_prev();
-      encoderValue = 480;
-    }
+    //xSemaphoreTakeRecursive(lvgl_mux, portMAX_DELAY);
     GUI.setTuneIndicator(encoderValue);
-    xSemaphoreGiveRecursive(lvgl_mux);
+    //xSemaphoreGiveRecursive(lvgl_mux);
+  };
 
-    // search station only if movement is slow
-
-    //lastEncChange = currentTime;
-    //lastEncValue = encoderValue;
-    /*Serial.print("encSpeed: ");
-    Serial.print(encSpeed);
-    Serial.print(" Average Speed: ");
-    Serial.println(averageEncSpeed);*/
-
+/*  if (blEncoderChanged || averageEncSpeed > 0) // needle settled: check new station
+  {
     int8_t idx = GUI.getStationIndexUnderIndicator(encoderValue);
     if (idx < 0)
     { // NO STATION
@@ -957,8 +935,7 @@ void rotary_tune_loop()
     };
     encoderValueOld = encoderValue;
   };
-  blEncoderChanged = false;
-  // handle_rotary_button();
+  blEncoderChanged = false;*/
 };
 #endif
 

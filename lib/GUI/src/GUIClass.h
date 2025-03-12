@@ -21,8 +21,6 @@ public:
     String _station = "";
     uint8_t _volume;
 
-// SparkOfCode: Moved virtual declarations to private: section
-
     void decodeJSON(String json)
     {
         JsonDocument doc;
@@ -46,9 +44,7 @@ public:
 
 private:
     virtual void begin(lv_obj_t *parent, String json) {
-
     };
-
     virtual void update(String json) {
     };
 

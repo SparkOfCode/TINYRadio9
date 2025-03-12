@@ -11,6 +11,7 @@
 
 #include "GUIClass.h"
 #include "WT32_SC01_PLUS.h"
+#include "Station.h"
 
 // CALLBACKS
 extern __attribute__((weak)) void gui_tuneToURL(String URL);
@@ -26,10 +27,89 @@ extern __attribute__((weak)) void gui_page_prev();
 extern __attribute__((weak)) void gui_setPage(int Page);
 //extern __attribute__((weak)) void gui_scrollPanel(int Page);
 
+//String last_title = "";
+//String last_station = "";
+
+LV_FONT_DECLARE(Berlin25_4);
+LV_FONT_DECLARE(Berlin10_4);
+LV_IMG_DECLARE(VU_METER_AMBER_SMALL);
+LV_IMG_DECLARE(NEEDLE_RED);
+
+class Page : public GuiClass
+{
+
+public:
+
+  Page();
+  Page(lv_obj_t *panel); // Constructor
+  lv_obj_t* get_lv_obj_panelPage();
+ lv_style_t tuning_style;
+lv_obj_t *createStationIndicator(lv_obj_t *parent);
+lv_obj_t *createStation(lv_obj_t *parent, const lv_font_t *font, bool inverse);
+void createStationList(lv_obj_t *parent);
+
+private:
+  
+  lv_obj_t *panelPage;
+  Station* _first_station1;
+  Station* _first_station2;
+  Station* _first_station3;
+  Station* _first_station4;
+  Station* _first_station5;
+  Station* _first_station6;
+  Station* _first_station7;
+  Station* _first_station8;
+  Station* _first_station9;
+  Station* _first_station10;
+  Station* _first_station11;
+  Station* _first_station12;
+  Station* _first_station13;
+  Station* _first_station14;
+  Station* _first_station15;
+  Station* _first_station16;
+  Station* _first_station17;
+  Station* _first_station18;
+  Station* _first_station19;
+
+  lv_style_t playing_style;
+  lv_style_t playing_style_inv;
+
+    String dummies[20] = {
+        "NÜRNBERG",
+        "NDR-WDR",
+        "FREDERIKST.",
+        "FLENSBURG",
+        "MALMÖ",
+        "SÜDWESTFUNK",
+        "VATIKAN",
+        "BRÜSSEL",
+        "MÜNSTER",
+        "BAYR.-RDFK.",
+        "MTE CARLO",
+        "LUXEMBURG",
+        "SAARBRÜCKEN",
+        "MERGENTHEIM",
+        "SCHWEIZ",
+        "BREMEN",
+        "STAVANGER",
+        "NORDEN BBC",
+        "STRASSBURG",
+        "LILLE"};
+
+  void createStyles();
+};
+
 class RetroGUI : public GuiClass
 {
 
 public:
+    
+    RetroGUI(); // Constructor
+    Page* panelPage;
+    Page* panelPage2;
+    Page* panelPage3;
+    Page* panelPage4;
+
     String last_title = "";
     String last_station = "";
 
@@ -44,7 +124,7 @@ public:
     void setVolumeIndicator(uint8_t value);
     bool inRange(int val, int minimum, int maximum);
     int8_t getStationIndexUnderIndicator(uint32_t indicatorPos);
-    void setTuneIndicator(uint32_t newPosition);
+    void setTuneIndicator(uint16_t &newPosition);
     void tuneToStation(uint8_t station_id);
     void setVUMeterValue(uint16_t value);
     void updateDRDindicator(bool drdStopped);
@@ -57,8 +137,7 @@ public:
 /***********************************************************/
 
 private:
-
-
+    SemaphoreHandle_t lvgl_mux;
     typeArrStations _stations;
 
     uint8_t _maxVolume;
